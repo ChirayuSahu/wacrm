@@ -33,8 +33,6 @@ export function verifyMetaWebhookSignature(
     )
     return false
   }
-
-  console.log("Received :", signatureHeader);
   const expected =
     'sha256=' +
     crypto.createHmac('sha256', secret).update(rawBody).digest('hex')
