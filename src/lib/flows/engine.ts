@@ -833,7 +833,10 @@ async function advanceFromNodeKey(
             
           const contactPhone = (contactData as { phone?: string } | null)?.phone;
           
-          if (contactPhone && data.data.mobile && contactPhone.includes(data.data.mobile)) {
+          const cleanContactPhone = contactPhone?.replace(/[^0-9]/g, "").slice(-10);
+          const cleanApiPhone = data.data.mobile?.replace(/[^0-9]/g, "").slice(-10);
+          
+          if (cleanContactPhone && cleanApiPhone && cleanContactPhone === cleanApiPhone) {
              phoneMatch = true;
              run.vars[cfg.var_key] = data.data.status;
              
