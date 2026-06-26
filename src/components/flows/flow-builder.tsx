@@ -112,6 +112,23 @@ export function FlowBuilder() {
     [removeNodeCtx],
   );
 
+  const updateNodeWrapped = useCallback(
+    (key: string, patch: Partial<BuilderNode>) => {
+      if (patch.node_key && patch.node_key !== key) {
+        setExpanded((prev) => {
+          const next = new Set(prev);
+          if (next.has(key)) {
+            next.delete(key);
+            next.add(patch.node_key!);
+          }
+          return next;
+        });
+      }
+      updateNode(key, patch);
+    },
+    [updateNode],
+  );
+
   const toggleExpanded = useCallback((key: string) => {
     setExpanded((prev) => {
       const next = new Set(prev);
@@ -187,7 +204,7 @@ export function FlowBuilder() {
                 (i) => i.scope === "node" && i.node_key === node.node_key,
               )}
               onToggle={() => toggleExpanded(node.node_key)}
-              onUpdate={(patch) => updateNode(node.node_key, patch)}
+              onUpdate={(patch) => updateNodeWrapped(node.node_key, patch)}
               onUpdateConfig={(patch) => updateNodeConfig(node.node_key, patch)}
               onRemove={() => removeNode(node.node_key)}
               onSetEntry={() =>
@@ -530,12 +547,9 @@ function NodeConfigWithAdvanced({
               <label className="mb-1 block text-xs text-muted-foreground">
                 Node key (internal identifier — keep stable for analytics)
               </label>
-              <Input
-                value={node.node_key}
-                onChange={(e) =>
-                  onUpdate({ node_key: slugify(e.target.value, node.node_key) })
-                }
-                className="bg-muted font-mono text-xs"
+              <NodeKeyInput
+                initialKey={node.node_key}
+                onChange={(key) => onUpdate({ node_key: key })}
               />
             </div>
             {hasReplyIds && (
@@ -593,6 +607,46 @@ function AddNodeButton({ onAdd }: { onAdd: (type: NodeType) => void }) {
         })}
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+}
+
+// ============================================================
+// Node key input
+// ============================================================
+
+function NodeKeyInput({
+  initialKey,
+  onChange,
+}: {
+  initialKey: string;
+  onChange: (newKey: string) => void;
+}) {
+  const [draft, setDraft] = useState(initialKey);
+
+  // Keep draft in sync if external data changes
+  useEffect(() => {
+    setDraft(initialKey);
+  }, [initialKey]);
+
+  function commit() {
+    const next = slugify(draft, initialKey);
+    setDraft(next);
+    if (next !== initialKey) onChange(next);
+  }
+
+  return (
+    <Input
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          commit();
+        }
+      }}
+      className="bg-muted font-mono text-xs"
+    />
   );
 }
 
