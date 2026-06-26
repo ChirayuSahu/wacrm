@@ -320,7 +320,7 @@ export interface FlowFallbackPolicy {
   /** Max reprompts before applying `on_exhaust`. */
   max_reprompts: number;
   /** Stale-run sweep cutoff. */
-  on_timeout_hours: number;
+  on_timeout_minutes: number;
   /** What to do once max_reprompts has been hit. */
   on_exhaust: "handoff" | "end";
 }
@@ -328,7 +328,7 @@ export interface FlowFallbackPolicy {
 export const DEFAULT_FALLBACK_POLICY: FlowFallbackPolicy = {
   on_unknown_reply: "reprompt",
   max_reprompts: 2,
-  on_timeout_hours: 24,
+  on_timeout_minutes: 1, // Defaulting to 1 minute as requested
   on_exhaust: "handoff",
 };
 

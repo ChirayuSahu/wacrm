@@ -78,8 +78,8 @@ export async function GET(request: Request) {
     const flowsField = Array.isArray(r.flows) ? r.flows[0] : r.flows
     const policy = resolveFallbackPolicy(flowsField?.fallback_policy ?? null)
     const lastAdvanced = new Date(r.last_advanced_at)
-    const ageHours = (now.getTime() - lastAdvanced.getTime()) / (1000 * 60 * 60)
-    if (ageHours < policy.on_timeout_hours) continue
+    const ageMinutes = (now.getTime() - lastAdvanced.getTime()) / (1000 * 60)
+    if (ageMinutes < policy.on_timeout_minutes) continue
 
     // Mark timed_out — guarded by the precondition `status='active'`
     // so concurrent advance from a late inbound doesn't overwrite a
@@ -100,8 +100,8 @@ export async function GET(request: Request) {
         flow_run_id: r.id,
         event_type: 'timeout',
         payload: {
-          age_hours: Math.round(ageHours * 10) / 10,
-          policy_hours: policy.on_timeout_hours,
+          age_minutes: Math.round(ageMinutes * 10) / 10,
+          policy_minutes: policy.on_timeout_minutes,
         },
       })
       swept += 1

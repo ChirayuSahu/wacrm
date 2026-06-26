@@ -48,10 +48,12 @@ export function resolveFallbackPolicy(
       typeof r.max_reprompts === "number" && r.max_reprompts >= 0
         ? Math.floor(r.max_reprompts)
         : DEFAULT_FALLBACK_POLICY.max_reprompts,
-    on_timeout_hours:
-      typeof r.on_timeout_hours === "number" && r.on_timeout_hours > 0
-        ? r.on_timeout_hours
-        : DEFAULT_FALLBACK_POLICY.on_timeout_hours,
+    on_timeout_minutes:
+      typeof r.on_timeout_minutes === "number" && r.on_timeout_minutes > 0
+        ? r.on_timeout_minutes
+        : typeof (r as any).on_timeout_hours === "number" && (r as any).on_timeout_hours > 0
+          ? (r as any).on_timeout_hours * 60
+          : DEFAULT_FALLBACK_POLICY.on_timeout_minutes,
     on_exhaust:
       r.on_exhaust === "handoff" || r.on_exhaust === "end"
         ? r.on_exhaust
