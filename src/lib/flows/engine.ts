@@ -1043,7 +1043,25 @@ export async function dispatchInboundToFlows(
       // One SELECT for the whole flow's nodes — advance loop is now
       // in-memory. See loadAllNodes.
       const nodes = await loadAllNodes(db, activeRun.flow_id);
-      return handleReplyForActiveRun(db, activeRun, input.message, nodes);
+      const res = await handleReplyForActiveRun(db, activeRun, input.message, nodes);
+      
+      // If the user's interactive reply advanced the flow to an End node,
+      // the flow is now completed. We can check if that same button tap 
+      // was meant to trigger a completely new flow (like a Main Menu routing).
+      if (res.outcome === "completed" && input.message.kind === "interactive_reply") {
+        const flow = await findEntryFlow(
+          db,
+          input.accountId,
+          input.message,
+          input.isFirstInboundMessage,
+        );
+        if (flow && flow.entry_node_id) {
+          const newNodes = await loadAllNodes(db, flow.id);
+          await startNewRun(db, flow, input, newNodes);
+        }
+      }
+      
+      return res;
     }
 
     // No active run → look for a flow whose entry trigger matches.
