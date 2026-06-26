@@ -55,6 +55,7 @@ import {
   type SendMessageNodeConfig,
   type SetTagNodeConfig,
   type StartNodeConfig,
+  type KeywordTriggerConfig,
   type FetchInvoiceNodeConfig,
   type ApiCallNodeConfig,
   type FetchOrdersNodeConfig,
