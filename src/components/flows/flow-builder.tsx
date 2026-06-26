@@ -426,6 +426,8 @@ function NodeCard({
   onUpdateConfig,
   onRemove,
   onSetEntry,
+  onMoveUp,
+  onMoveDown,
 }: {
   node: BuilderNode;
   allNodes: BuilderNode[];
