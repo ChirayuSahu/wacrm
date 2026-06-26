@@ -85,6 +85,31 @@ export function deriveCanvasEdges(nodes: BuilderNode[]): CanvasEdge[] {
         break;
       }
 
+      case "fetch_invoice":
+      case "api_call": {
+        const successNext = (cfg as { success_next?: string }).success_next;
+        const failureNext = (cfg as { failure_next?: string }).failure_next;
+        if (successNext && knownKeys.has(successNext)) {
+          edges.push({
+            id: `${node.node_key}--success--${successNext}`,
+            source: node.node_key,
+            target: successNext,
+            sourceHandle: "success",
+            label: "Success",
+          });
+        }
+        if (failureNext && knownKeys.has(failureNext)) {
+          edges.push({
+            id: `${node.node_key}--failure--${failureNext}`,
+            source: node.node_key,
+            target: failureNext,
+            sourceHandle: "failure",
+            label: "Failure",
+          });
+        }
+        break;
+      }
+
       case "send_buttons": {
         const buttons = Array.isArray(
           (cfg as { buttons?: unknown }).buttons,

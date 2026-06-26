@@ -25,6 +25,8 @@ import {
   ChevronDown,
   ChevronUp,
   CornerDownRight,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -146,6 +148,32 @@ export function FlowBuilder() {
     [],
   );
 
+  const moveNodeUp = useCallback(
+    (index: number) => {
+      setState((s) => {
+        const next = [...s.nodes];
+        const temp = next[index];
+        next[index] = next[index - 1];
+        next[index - 1] = temp;
+        return { ...s, nodes: next };
+      });
+    },
+    [setState],
+  );
+
+  const moveNodeDown = useCallback(
+    (index: number) => {
+      setState((s) => {
+        const next = [...s.nodes];
+        const temp = next[index];
+        next[index] = next[index + 1];
+        next[index + 1] = temp;
+        return { ...s, nodes: next };
+      });
+    },
+    [setState],
+  );
+
   // React to validator jumps via the shared flashKey. We DERIVE the
   // expanded-with-flash set (avoids the "setState inside effect"
   // smell of mutating `expanded` from a useEffect on flashKey), then
@@ -191,7 +219,7 @@ export function FlowBuilder() {
             shape from the brief.
           </div>
         ) : (
-          state.nodes.map((node) => (
+          state.nodes.map((node, index) => (
             <NodeCard
               key={node.node_key}
               node={node}
@@ -209,6 +237,12 @@ export function FlowBuilder() {
               onRemove={() => removeNode(node.node_key)}
               onSetEntry={() =>
                 setState((s) => ({ ...s, entry_node_id: node.node_key }))
+              }
+              onMoveUp={index > 0 ? () => moveNodeUp(index) : undefined}
+              onMoveDown={
+                index < state.nodes.length - 1
+                  ? () => moveNodeDown(index)
+                  : undefined
               }
             />
           ))
@@ -405,6 +439,8 @@ function NodeCard({
   onUpdateConfig: (patch: Record<string, unknown>) => void;
   onRemove: () => void;
   onSetEntry: () => void;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
 }) {
   const meta = NODE_META[node.node_type];
   const hasError = issues.some((i) => i.severity === "error");
@@ -471,6 +507,26 @@ function NodeCard({
           />
           <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
             <div className="flex items-center gap-2">
+              {onMoveUp && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onMoveUp}
+                  className="h-8 w-8 text-muted-foreground"
+                >
+                  <ArrowUp className="h-4 w-4" />
+                </Button>
+              )}
+              {onMoveDown && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onMoveDown}
+                  className="h-8 w-8 text-muted-foreground"
+                >
+                  <ArrowDown className="h-4 w-4" />
+                </Button>
+              )}
               {!isEntry && (
                 <Button variant="ghost" size="sm" onClick={onSetEntry}>
                   Set as entry
