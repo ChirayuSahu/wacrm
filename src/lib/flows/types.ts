@@ -183,6 +183,16 @@ export interface FetchInvoiceNodeConfig {
   failure_next: string;
 }
 
+export interface ApiCallNodeConfig {
+  url: string;
+  method: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
+  headers?: Array<{ key: string; value: string }>;
+  body?: string;
+  destruct?: Array<{ path: string; var_key: string }>;
+  success_next: string;
+  failure_next: string;
+}
+
 /**
  * Total union — every concrete node_type the v1 engine understands.
  * Add new node types here and the engine's switch will flag missing
@@ -202,6 +212,7 @@ export type FlowNodeConfig =
   | { node_type: "set_tag"; config: SetTagNodeConfig }
   | { node_type: "handoff"; config: HandoffNodeConfig }
   | { node_type: "fetch_invoice"; config: FetchInvoiceNodeConfig }
+  | { node_type: "api_call"; config: ApiCallNodeConfig }
   | { node_type: "end"; config: EndNodeConfig };
 
 export type FlowNodeType = FlowNodeConfig["node_type"];

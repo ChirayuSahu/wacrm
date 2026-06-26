@@ -57,6 +57,7 @@ import {
   type StartNodeConfig,
   type KeywordTriggerConfig,
   type FetchInvoiceNodeConfig,
+  type ApiCallNodeConfig,
 } from "./types";
 
 // ============================================================
@@ -118,7 +119,8 @@ export function isAutoAdvancing(node_type: string): boolean {
     node_type === "send_media" ||
     node_type === "condition" ||
     node_type === "set_tag" ||
-    node_type === "fetch_invoice"
+    node_type === "fetch_invoice" ||
+    node_type === "api_call"
   );
 }
 
@@ -767,6 +769,51 @@ async function advanceFromNodeKey(
         });
       }
       currentKey = phoneMatch ? cfg.success_next : cfg.failure_next;
+      continue;
+    }
+    if (node.node_type === "api_call") {
+      const cfg = node.config as unknown as ApiCallNodeConfig;
+      let success = false;
+      try {
+        const url = interpolateVars(cfg.url, run.vars);
+        const headers: Record<string, string> = {};
+        for (const h of cfg.headers ?? []) {
+          if (h.key) headers[h.key] = interpolateVars(h.value, run.vars);
+        }
+        const method = cfg.method || "GET";
+        const body = method !== "GET" && method !== "DELETE" && cfg.body
+          ? interpolateVars(cfg.body, run.vars)
+          : undefined;
+
+        const response = await fetch(url, { method, headers, body });
+        
+        if (response.ok) {
+          success = true;
+          const isJson = response.headers.get("content-type")?.includes("application/json");
+          const data = isJson ? await response.json() : await response.text();
+          
+          let dirty = false;
+          for (const d of cfg.destruct ?? []) {
+            if (!d.path || !d.var_key) continue;
+            // Basic nested path extraction
+            const val = d.path.split('.').reduce((obj, key) => (obj && typeof obj === 'object') ? obj[key] : undefined, data);
+            if (val !== undefined) {
+              run.vars[d.var_key] = val;
+              dirty = true;
+            }
+          }
+          
+          if (dirty) {
+             await db.from("flow_runs").update({ vars: run.vars }).eq("id", run.id);
+          }
+        }
+      } catch (err) {
+        await logEvent(db, run.id, "error", node.node_key, {
+          reason: "api_call_failed",
+          detail: err instanceof Error ? err.message : String(err),
+        });
+      }
+      currentKey = success ? cfg.success_next : cfg.failure_next;
       continue;
     }
     if (node.node_type === "send_buttons") {

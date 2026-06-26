@@ -749,6 +749,44 @@ function validateNode(
       break;
     }
 
+    case "api_call": {
+      const cfg = node.config as {
+        url?: string;
+        success_next?: string;
+        failure_next?: string;
+      };
+      if (!cfg.url?.trim()) {
+        issues.push({
+          severity: "error",
+          scope: "node",
+          node_key: node.node_key,
+          field: "url",
+          message: "API Call needs a URL.",
+        });
+      }
+      for (const branch of ["success_next", "failure_next"] as const) {
+        const key = cfg[branch];
+        if (!key) {
+          issues.push({
+            severity: "error",
+            scope: "node",
+            node_key: node.node_key,
+            field: branch,
+            message: `API Call needs a node for the "${branch === "success_next" ? "success" : "failure"}" branch.`,
+          });
+        } else if (!knownKeys.has(key)) {
+          issues.push({
+            severity: "error",
+            scope: "node",
+            node_key: node.node_key,
+            field: branch,
+            message: `API Call's "${branch}" points to non-existent node "${key}".`,
+          });
+        }
+      }
+      break;
+    }
+
     case "handoff":
     case "end":
       // Terminal nodes have no outgoing edges; nothing to validate

@@ -186,6 +186,16 @@ export function defaultConfigFor(type: NodeType): Record<string, unknown> {
       return { note: "" };
     case "fetch_invoice":
       return { invoice_id: "", var_key: "invoice_status", success_next: "", failure_next: "" };
+    case "api_call":
+      return {
+        url: "",
+        method: "GET",
+        headers: [],
+        body: "",
+        destruct: [],
+        success_next: "",
+        failure_next: "",
+      };
     case "end":
       return {};
   }

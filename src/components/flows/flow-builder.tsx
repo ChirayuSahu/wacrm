@@ -568,6 +568,7 @@ function AddNodeButton({ onAdd }: { onAdd: (type: NodeType) => void }) {
     "condition",
     "set_tag",
     "fetch_invoice",
+    "api_call",
     "handoff",
     "end",
   ];

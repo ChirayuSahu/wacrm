@@ -28,6 +28,7 @@ import {
   Receipt,
   Tag,
   UserPlus,
+  Webhook,
   Workflow,
 } from "lucide-react";
 
@@ -50,6 +51,7 @@ export type NodeType =
   | "set_tag"
   | "handoff"
   | "fetch_invoice"
+  | "api_call"
   | "end";
 
 export interface BuilderNode {
@@ -116,6 +118,11 @@ export const NODE_META: Record<
     label: "Fetch invoice",
     icon: Receipt,
     color: "text-blue-500",
+  },
+  api_call: {
+    label: "API Call",
+    icon: Webhook,
+    color: "text-orange-500",
   },
   end: { label: "End", icon: Flag, color: "text-muted-foreground" },
 };
@@ -261,6 +268,11 @@ export function summarizeNode(node: BuilderNode): string | null {
     case "fetch_invoice": {
       const varKey = typeof cfg.var_key === "string" ? cfg.var_key : "";
       return varKey ? `Checks phone, stores vars.${varKey}` : "Fetch invoice status";
+    }
+    case "api_call": {
+      const method = typeof cfg.method === "string" ? cfg.method : "GET";
+      const url = typeof cfg.url === "string" ? cfg.url : "";
+      return url ? `${method} ${truncate(url, 40)}` : "Make HTTP request";
     }
   }
 }

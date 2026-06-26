@@ -238,6 +238,16 @@ export function NodeConfigForm({
         </>
       );
 
+    case "api_call":
+      return (
+        <ApiCallForm
+          cfg={cfg as ApiCallCfg}
+          allNodes={allNodes}
+          currentKey={node.node_key}
+          onUpdateConfig={onUpdateConfig}
+        />
+      );
+
     case "end":
       return (
         <p className="text-xs text-muted-foreground">
@@ -1084,5 +1094,170 @@ function SendMediaForm({
         label="After sending, advance to"
       />
     </>
+  );
+}
+
+// ============================================================
+// api_call
+// ============================================================
+
+interface ApiCallCfg {
+  url?: string;
+  method?: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
+  headers?: Array<{ key: string; value: string }>;
+  body?: string;
+  destruct?: Array<{ path: string; var_key: string }>;
+  success_next?: string;
+  failure_next?: string;
+}
+
+function ApiCallForm({
+  cfg,
+  allNodes,
+  currentKey,
+  onUpdateConfig,
+}: {
+  cfg: ApiCallCfg;
+  allNodes: BuilderNode[];
+  currentKey: string;
+  onUpdateConfig: (patch: Record<string, unknown>) => void;
+}) {
+  const headers = cfg.headers ?? [];
+  const destruct = cfg.destruct ?? [];
+
+  return (
+    <div className="flex flex-col gap-4">
+      <TextRow
+        label="URL (supports {{vars.key}})"
+        value={cfg.url ?? ""}
+        onChange={(v) => onUpdateConfig({ url: v })}
+      />
+      <div>
+        <label className="mb-1 block text-xs text-muted-foreground">Method</label>
+        <Select
+          value={cfg.method ?? "GET"}
+          onValueChange={(v) => onUpdateConfig({ method: v })}
+        >
+          <SelectTrigger className="bg-muted text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {["GET", "POST", "PUT", "PATCH", "DELETE"].map((m) => (
+              <SelectItem key={m} value={m}>
+                {m}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div>
+        <div className="mb-1 flex items-center justify-between">
+          <label className="text-xs text-muted-foreground">Headers</label>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => onUpdateConfig({ headers: [...headers, { key: "", value: "" }] })}
+            className="h-6 px-2 text-[10px]"
+          >
+            <Plus className="mr-1 h-3 w-3" /> Add Header
+          </Button>
+        </div>
+        <div className="flex flex-col gap-2">
+          {headers.map((h, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <Input
+                placeholder="Key"
+                value={h.key}
+                onChange={(e) => onUpdateConfig({ headers: headers.map((x, idx) => idx === i ? { ...x, key: e.target.value } : x) }) }
+                className="bg-muted text-xs"
+              />
+              <Input
+                placeholder="Value"
+                value={h.value}
+                onChange={(e) => onUpdateConfig({ headers: headers.map((x, idx) => idx === i ? { ...x, value: e.target.value } : x) }) }
+                className="bg-muted text-xs"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => onUpdateConfig({ headers: headers.filter((_, idx) => idx !== i) })}
+                className="h-8 w-8 text-red-400 hover:bg-red-500/10"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {cfg.method !== "GET" && cfg.method !== "DELETE" && (
+        <TextRow
+          label="Body (JSON string, supports {{vars.key}})"
+          value={cfg.body ?? ""}
+          onChange={(v) => onUpdateConfig({ body: v })}
+          rows={4}
+        />
+      )}
+
+      <div>
+        <div className="mb-1 flex items-center justify-between">
+          <label className="text-xs text-muted-foreground">Destructure into Variables</label>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => onUpdateConfig({ destruct: [...destruct, { path: "", var_key: "" }] })}
+            className="h-6 px-2 text-[10px]"
+          >
+            <Plus className="mr-1 h-3 w-3" /> Add Map
+          </Button>
+        </div>
+        <div className="flex flex-col gap-2">
+          {destruct.map((d, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <Input
+                placeholder="data.status"
+                value={d.path}
+                onChange={(e) => onUpdateConfig({ destruct: destruct.map((x, idx) => idx === i ? { ...x, path: e.target.value } : x) }) }
+                className="bg-muted text-xs"
+              />
+              <Input
+                placeholder="invoice_status"
+                value={d.var_key}
+                onChange={(e) => onUpdateConfig({ destruct: destruct.map((x, idx) => idx === i ? { ...x, var_key: e.target.value.replace(/[^a-zA-Z0-9_]/g, "") } : x) }) }
+                className="bg-muted text-xs"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => onUpdateConfig({ destruct: destruct.filter((_, idx) => idx !== i) })}
+                className="h-8 w-8 text-red-400 hover:bg-red-500/10"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <NextNodeRow
+        value={cfg.success_next ?? ""}
+        allNodes={allNodes}
+        currentKey={currentKey}
+        onChange={(v) => onUpdateConfig({ success_next: v })}
+        label="If success (2xx)"
+      />
+      <NextNodeRow
+        value={cfg.failure_next ?? ""}
+        allNodes={allNodes}
+        currentKey={currentKey}
+        onChange={(v) => onUpdateConfig({ failure_next: v })}
+        label="If failure (non-2xx)"
+      />
+    </div>
   );
 }
