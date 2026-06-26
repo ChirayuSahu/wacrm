@@ -56,7 +56,7 @@ import {
   type OnNodeDrag,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Wand2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -279,6 +279,23 @@ function FlowCanvasInner() {
       ),
     );
   }, [autoLayoutPositions, updateNodePositions]);
+
+  const handleForceLayout = useCallback(() => {
+    const canvasEdges = deriveCanvasEdges(builderNodes);
+    const layout = autoLayout(
+      builderNodes.map((n) => ({
+        id: n.node_key,
+        width: NODE_WIDTH,
+        height: NODE_HEIGHT,
+      })),
+      canvasEdges.map((e) => ({ source: e.source, target: e.target })),
+      { direction: "TB" },
+    );
+    updateNodePositions(
+      Object.fromEntries([...layout].map(([key, pos]) => [key, pos])),
+    );
+    setTimeout(() => reactFlow.fitView({ padding: 0.2, duration: 800 }), 50);
+  }, [builderNodes, updateNodePositions, reactFlow]);
 
   const derivedRfNodes = useMemo(() => {
     const nodes: RfNode<NodeData>[] = builderNodes.map((n) => {
@@ -506,6 +523,17 @@ function FlowCanvasInner() {
           />
           <Panel position="bottom-right" className="!bottom-4 !right-4">
             <CanvasAddNodeButton />
+          </Panel>
+          <Panel position="top-right" className="!top-1 !right-1">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleForceLayout}
+              className="gap-2 border border-border bg-card shadow-sm"
+            >
+              <Wand2 className="h-4 w-4" />
+              Auto layout
+            </Button>
           </Panel>
         </ReactFlow>
       </div>
