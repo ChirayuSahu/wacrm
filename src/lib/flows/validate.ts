@@ -701,6 +701,54 @@ function validateNode(
       break;
     }
 
+    case "fetch_invoice": {
+      const cfg = node.config as {
+        invoice_id?: string;
+        var_key?: string;
+        success_next?: string;
+        failure_next?: string;
+      };
+      if (!cfg.invoice_id?.trim()) {
+        issues.push({
+          severity: "error",
+          scope: "node",
+          node_key: node.node_key,
+          field: "invoice_id",
+          message: "Fetch-invoice needs an invoice ID to query.",
+        });
+      }
+      if (!cfg.var_key?.trim()) {
+        issues.push({
+          severity: "error",
+          scope: "node",
+          node_key: node.node_key,
+          field: "var_key",
+          message: "Fetch-invoice needs a var_key to store the status under.",
+        });
+      }
+      for (const branch of ["success_next", "failure_next"] as const) {
+        const key = cfg[branch];
+        if (!key) {
+          issues.push({
+            severity: "error",
+            scope: "node",
+            node_key: node.node_key,
+            field: branch,
+            message: `Fetch-invoice needs a node for the "${branch === "success_next" ? "success" : "failure"}" branch.`,
+          });
+        } else if (!knownKeys.has(key)) {
+          issues.push({
+            severity: "error",
+            scope: "node",
+            node_key: node.node_key,
+            field: branch,
+            message: `Fetch-invoice's "${branch}" points to non-existent node "${key}".`,
+          });
+        }
+      }
+      break;
+    }
+
     case "handoff":
     case "end":
       // Terminal nodes have no outgoing edges; nothing to validate
@@ -763,6 +811,16 @@ function outgoingEdges(node: NodeInput): string[] {
       const out: string[] = [];
       if (cfg.true_next) out.push(cfg.true_next);
       if (cfg.false_next) out.push(cfg.false_next);
+      return out;
+    }
+    case "fetch_invoice": {
+      const cfg = node.config as {
+        success_next?: string;
+        failure_next?: string;
+      };
+      const out: string[] = [];
+      if (cfg.success_next) out.push(cfg.success_next);
+      if (cfg.failure_next) out.push(cfg.failure_next);
       return out;
     }
     case "send_buttons": {

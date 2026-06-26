@@ -198,6 +198,46 @@ export function NodeConfigForm({
         />
       );
 
+    case "fetch_invoice":
+      return (
+        <>
+          <TextRow
+            label="Invoice ID (supports {{vars.key}})"
+            value={(cfg as { invoice_id?: string }).invoice_id ?? ""}
+            onChange={(v) => onUpdateConfig({ invoice_id: v })}
+          />
+          <div>
+            <label className="mb-1 block text-xs text-muted-foreground">
+              Variable key (to store status)
+            </label>
+            <Input
+              value={(cfg as { var_key?: string }).var_key ?? ""}
+              onChange={(e) =>
+                onUpdateConfig({
+                  var_key: e.target.value.replace(/[^a-zA-Z0-9_]/g, ""),
+                })
+              }
+              placeholder="e.g. invoice_status"
+              className="bg-muted font-mono text-xs"
+            />
+          </div>
+          <NextNodeRow
+            value={(cfg as { success_next?: string }).success_next ?? ""}
+            allNodes={allNodes}
+            currentKey={node.node_key}
+            onChange={(v) => onUpdateConfig({ success_next: v })}
+            label="If phone matches (Success)"
+          />
+          <NextNodeRow
+            value={(cfg as { failure_next?: string }).failure_next ?? ""}
+            allNodes={allNodes}
+            currentKey={node.node_key}
+            onChange={(v) => onUpdateConfig({ failure_next: v })}
+            label="If phone mismatch (Failure)"
+          />
+        </>
+      );
+
     case "end":
       return (
         <p className="text-xs text-muted-foreground">

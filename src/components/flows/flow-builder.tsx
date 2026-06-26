@@ -567,6 +567,7 @@ function AddNodeButton({ onAdd }: { onAdd: (type: NodeType) => void }) {
     "collect_input",
     "condition",
     "set_tag",
+    "fetch_invoice",
     "handoff",
     "end",
   ];

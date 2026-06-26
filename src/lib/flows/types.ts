@@ -176,6 +176,13 @@ export interface SetTagNodeConfig {
 // Terminal nodes carry no config — they just stop the run.
 export type EndNodeConfig = Record<string, never>;
 
+export interface FetchInvoiceNodeConfig {
+  invoice_id: string;
+  var_key: string;
+  success_next: string;
+  failure_next: string;
+}
+
 /**
  * Total union — every concrete node_type the v1 engine understands.
  * Add new node types here and the engine's switch will flag missing
@@ -194,6 +201,7 @@ export type FlowNodeConfig =
   | { node_type: "condition"; config: ConditionNodeConfig }
   | { node_type: "set_tag"; config: SetTagNodeConfig }
   | { node_type: "handoff"; config: HandoffNodeConfig }
+  | { node_type: "fetch_invoice"; config: FetchInvoiceNodeConfig }
   | { node_type: "end"; config: EndNodeConfig };
 
 export type FlowNodeType = FlowNodeConfig["node_type"];

@@ -187,6 +187,12 @@ export function outgoingSlots(node: BuilderNode): OutgoingSlot[] {
         { id: "false", label: "false" },
       ];
 
+    case "fetch_invoice":
+      return [
+        { id: "success", label: "success" },
+        { id: "failure", label: "failure" },
+      ];
+
     case "send_buttons": {
       const buttons = Array.isArray((cfg as { buttons?: unknown }).buttons)
         ? ((cfg as { buttons: Array<Record<string, unknown>> }).buttons)
@@ -259,6 +265,11 @@ export function applyEdgeConnection(
     case "condition":
       if (sourceHandle === "true") return { true_next: targetKey };
       if (sourceHandle === "false") return { false_next: targetKey };
+      return null;
+
+    case "fetch_invoice":
+      if (sourceHandle === "success") return { success_next: targetKey };
+      if (sourceHandle === "failure") return { failure_next: targetKey };
       return null;
 
     case "send_buttons": {
@@ -361,6 +372,18 @@ function patchedConfigWithoutKey(
         ...cfg,
         ...(trueMatch ? { true_next: "" } : {}),
         ...(falseMatch ? { false_next: "" } : {}),
+      };
+    }
+
+    case "fetch_invoice": {
+      const c = cfg as { success_next?: string; failure_next?: string };
+      const sMatch = c.success_next === deletedKey;
+      const fMatch = c.failure_next === deletedKey;
+      if (!sMatch && !fMatch) return null;
+      return {
+        ...cfg,
+        ...(sMatch ? { success_next: "" } : {}),
+        ...(fMatch ? { failure_next: "" } : {}),
       };
     }
 

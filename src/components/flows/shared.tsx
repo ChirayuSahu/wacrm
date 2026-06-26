@@ -25,6 +25,7 @@ import {
   MessageCircle,
   Paperclip,
   PlayCircle,
+  Receipt,
   Tag,
   UserPlus,
   Workflow,
@@ -48,6 +49,7 @@ export type NodeType =
   | "condition"
   | "set_tag"
   | "handoff"
+  | "fetch_invoice"
   | "end";
 
 export interface BuilderNode {
@@ -109,6 +111,11 @@ export const NODE_META: Record<
     label: "Handoff to agent",
     icon: UserPlus,
     color: "text-amber-400",
+  },
+  fetch_invoice: {
+    label: "Fetch invoice",
+    icon: Receipt,
+    color: "text-blue-500",
   },
   end: { label: "End", icon: Flag, color: "text-muted-foreground" },
 };
@@ -250,6 +257,10 @@ export function summarizeNode(node: BuilderNode): string | null {
     case "handoff": {
       const note = typeof cfg.note === "string" ? cfg.note : "";
       return note.length > 0 ? truncate(note) : null;
+    }
+    case "fetch_invoice": {
+      const varKey = typeof cfg.var_key === "string" ? cfg.var_key : "";
+      return varKey ? `Checks phone, stores vars.${varKey}` : "Fetch invoice status";
     }
   }
 }

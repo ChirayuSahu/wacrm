@@ -56,6 +56,7 @@ import {
   type SetTagNodeConfig,
   type StartNodeConfig,
   type KeywordTriggerConfig,
+  type FetchInvoiceNodeConfig,
 } from "./types";
 
 // ============================================================
@@ -116,7 +117,8 @@ export function isAutoAdvancing(node_type: string): boolean {
     node_type === "send_message" ||
     node_type === "send_media" ||
     node_type === "condition" ||
-    node_type === "set_tag"
+    node_type === "set_tag" ||
+    node_type === "fetch_invoice"
   );
 }
 
@@ -730,6 +732,41 @@ async function advanceFromNodeKey(
         });
       }
       currentKey = cfg.next_node_key;
+      continue;
+    }
+    if (node.node_type === "fetch_invoice") {
+      const cfg = node.config as unknown as FetchInvoiceNodeConfig;
+      let phoneMatch = false;
+      try {
+        const url = `https://api.rajeshpharma.com/status/${interpolateVars(cfg.invoice_id, run.vars)}`;
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if (data.success && data.data) {
+          // get contact's phone
+          const { data: contactData } = await db
+            .from("contacts")
+            .select("phone")
+            .eq("id", run.contact_id!)
+            .maybeSingle();
+            
+          const contactPhone = (contactData as { phone?: string } | null)?.phone;
+          
+          if (contactPhone && data.data.mobile && contactPhone.includes(data.data.mobile)) {
+             phoneMatch = true;
+             run.vars[cfg.var_key] = data.data.status;
+             
+             // Update vars in DB
+             await db.from("flow_runs").update({ vars: run.vars }).eq("id", run.id);
+          }
+        }
+      } catch (err) {
+        await logEvent(db, run.id, "error", node.node_key, {
+          reason: "fetch_invoice_failed",
+          detail: err instanceof Error ? err.message : String(err),
+        });
+      }
+      currentKey = phoneMatch ? cfg.success_next : cfg.failure_next;
       continue;
     }
     if (node.node_type === "send_buttons") {
