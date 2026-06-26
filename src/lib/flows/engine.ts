@@ -362,6 +362,7 @@ async function sendButtonsAndSuspend(
   db: AdminClient,
   run: FlowRunRow,
   node: FlowNodeRow,
+  vars: Record<string, unknown>
 ): Promise<{ outcome: "advanced"; node_key: string }> {
   const cfg = node.config as unknown as SendButtonsNodeConfig;
   const { whatsapp_message_id } = await engineSendInteractiveButtons({
@@ -369,10 +370,10 @@ async function sendButtonsAndSuspend(
     userId: run.user_id,
     conversationId: run.conversation_id!,
     contactId: run.contact_id!,
-    bodyText: cfg.text,
-    headerText: cfg.header_text,
-    footerText: cfg.footer_text,
-    buttons: cfg.buttons.map((b) => ({ id: b.reply_id, title: b.title })),
+    bodyText: interpolateVars(cfg.text ?? "", vars),
+    headerText: cfg.header_text ? interpolateVars(cfg.header_text, vars) : undefined,
+    footerText: cfg.footer_text ? interpolateVars(cfg.footer_text, vars) : undefined,
+    buttons: cfg.buttons.map((b) => ({ id: b.reply_id, title: interpolateVars(b.title ?? "", vars) })),
   });
   await logEvent(db, run.id, "message_sent", node.node_key, {
     node_type: "send_buttons",
@@ -398,6 +399,7 @@ async function sendListAndSuspend(
   db: AdminClient,
   run: FlowRunRow,
   node: FlowNodeRow,
+  vars: Record<string, unknown>
 ): Promise<{ outcome: "advanced"; node_key: string }> {
   const cfg = node.config as unknown as SendListNodeConfig;
   const { whatsapp_message_id } = await engineSendInteractiveList({
@@ -405,16 +407,16 @@ async function sendListAndSuspend(
     userId: run.user_id,
     conversationId: run.conversation_id!,
     contactId: run.contact_id!,
-    bodyText: cfg.text,
-    buttonLabel: cfg.button_label,
-    headerText: cfg.header_text,
-    footerText: cfg.footer_text,
+    bodyText: interpolateVars(cfg.text ?? "", vars),
+    buttonLabel: interpolateVars(cfg.button_label ?? "", vars),
+    headerText: cfg.header_text ? interpolateVars(cfg.header_text, vars) : undefined,
+    footerText: cfg.footer_text ? interpolateVars(cfg.footer_text, vars) : undefined,
     sections: cfg.sections.map((s) => ({
-      title: s.title,
+      title: interpolateVars(s.title ?? "", vars),
       rows: s.rows.map((r) => ({
         id: r.reply_id,
-        title: r.title,
-        description: r.description,
+        title: interpolateVars(r.title ?? "", vars),
+        description: r.description ? interpolateVars(r.description, vars) : undefined,
       })),
     })),
   });
@@ -916,7 +918,7 @@ async function advanceFromNodeKey(
       continue;
     }
     if (node.node_type === "send_buttons") {
-      await sendButtonsAndSuspend(db, run, node);
+      await sendButtonsAndSuspend(db, run, node, interpolationVars);
       // Persist the new current_node_key via optimistic UPDATE.
       const advanced = await advanceCurrentNodeKey(
         db,
@@ -932,7 +934,7 @@ async function advanceFromNodeKey(
       return { outcome: "advanced" };
     }
     if (node.node_type === "send_list") {
-      await sendListAndSuspend(db, run, node);
+      await sendListAndSuspend(db, run, node, interpolationVars);
       const advanced = await advanceCurrentNodeKey(
         db,
         run.id,
@@ -1172,6 +1174,18 @@ async function handleReplyForActiveRun(
     return { consumed: true, flow_run_id: run.id, outcome: "no_match" };
   }
 
+  let interpolationVars = run.vars;
+  if (run.contact_id) {
+    const { data: contact } = await db.from("contacts").select("name, phone").eq("id", run.contact_id).maybeSingle();
+    if (contact) {
+      interpolationVars = {
+        ...run.vars,
+        "contact.name": contact.name,
+        "contact.phone": contact.phone?.replace(/[^0-9]/g, ""),
+      };
+    }
+  }
+
   // Two ways a reply can advance:
   //   1. Interactive button/list tap on a send_buttons/send_list node.
   //   2. Text reply on a collect_input node — capture into vars.
@@ -1284,9 +1298,9 @@ async function handleReplyForActiveRun(
   if (action.type === "reprompt") {
     // Re-send the same prompt. Same node, no current_node_key change.
     if (currentNode.node_type === "send_buttons") {
-      await sendButtonsAndSuspend(db, run, currentNode);
+      await sendButtonsAndSuspend(db, run, currentNode, interpolationVars);
     } else if (currentNode.node_type === "send_list") {
-      await sendListAndSuspend(db, run, currentNode);
+      await sendListAndSuspend(db, run, currentNode, interpolationVars);
     } else if (currentNode.node_type === "fetch_orders") {
       await fetchOrdersAndSuspend(db, run, currentNode);
     } else if (currentNode.node_type === "collect_input") {
@@ -1296,10 +1310,10 @@ async function handleReplyForActiveRun(
       try {
         await engineSendText({
           accountId: run.account_id,
-    userId: run.user_id,
+          userId: run.user_id,
           conversationId: run.conversation_id!,
           contactId: run.contact_id!,
-          text: interpolateVars(cfg.prompt_text, run.vars),
+          text: interpolateVars(cfg.prompt_text, interpolationVars),
         });
       } catch (err) {
         await logEvent(db, run.id, "error", currentNode.node_key, {
