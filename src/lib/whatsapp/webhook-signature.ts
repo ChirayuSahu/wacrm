@@ -23,13 +23,6 @@ export function verifyMetaWebhookSignature(
   signatureHeader: string | null,
 ): boolean {
   const secret = process.env.META_APP_SECRET
-  console.log("Received :", signatureHeader);
-
-  console.log(
-    "Expected :",
-    "sha256=" +
-    crypto.createHmac("sha256", secret).update(rawBody).digest("hex")
-  );
 
   console.log("Body:", rawBody);
   if (!secret) {
@@ -41,12 +34,13 @@ export function verifyMetaWebhookSignature(
     return false
   }
 
-  if (!signatureHeader) return false
-  if (!signatureHeader.startsWith('sha256=')) return false
-
+  console.log("Received :", signatureHeader);
   const expected =
     'sha256=' +
     crypto.createHmac('sha256', secret).update(rawBody).digest('hex')
+
+  if (!signatureHeader) return false
+  if (!signatureHeader.startsWith('sha256=')) return false
 
   const a = Buffer.from(signatureHeader)
   const b = Buffer.from(expected)
