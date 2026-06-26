@@ -60,6 +60,7 @@ import {
   type ApiCallNodeConfig,
   type FetchOrdersNodeConfig,
 } from "./types";
+import { fetchBackend } from "../backend-client";
 
 // ============================================================
 // Pure helpers — extracted so engine.test.ts can exercise them
@@ -462,9 +463,7 @@ async function fetchOrdersAndSuspend(
   }
 
   try {
-     const url = `https://api.rajeshpharma.com/wa/bills/${phone}`;
-     const res = await fetch(url);
-     const data = await res.json();
+     const data = await fetchBackend(`/wa/bills/${phone}`);
      
      if (data.success && Array.isArray(data.data) && data.data.length > 0) {
         const rows = data.data.slice(0, 10).map((b: any) => ({
@@ -819,9 +818,8 @@ async function advanceFromNodeKey(
       const cfg = node.config as unknown as FetchInvoiceNodeConfig;
       let phoneMatch = false;
       try {
-        const url = `https://api.rajeshpharma.com/status/${interpolateVars(cfg.invoice_id, run.vars)}`;
-        const response = await fetch(url);
-        const data = await response.json();
+        const invoiceId = interpolateVars(cfg.invoice_id, run.vars);
+        const data = await fetchBackend(`/wa/status/${invoiceId}`);
         
         if (data.success && data.data) {
           // get contact's phone
