@@ -55,9 +55,9 @@ import {
   type SendMessageNodeConfig,
   type SetTagNodeConfig,
   type StartNodeConfig,
-  type KeywordTriggerConfig,
   type FetchInvoiceNodeConfig,
   type ApiCallNodeConfig,
+  type FetchOrdersNodeConfig,
 } from "./types";
 
 // ============================================================
@@ -432,6 +432,85 @@ async function sendListAndSuspend(
     })
     .eq("id", run.id);
   return { outcome: "advanced", node_key: node.node_key };
+}
+
+async function fetchOrdersAndSuspend(
+  db: AdminClient,
+  run: FlowRunRow,
+  node: FlowNodeRow,
+): Promise<{ outcome: "advanced" | "failed"; node_key: string }> {
+  const cfg = node.config as unknown as FetchOrdersNodeConfig;
+  
+  let phone = "";
+  if (cfg.phone_key === "contact.phone") {
+    const { data: contactData } = await db
+      .from("contacts")
+      .select("phone")
+      .eq("id", run.contact_id!)
+      .maybeSingle();
+    phone = (contactData as { phone?: string } | null)?.phone || "";
+  } else {
+    phone = String(run.vars[cfg.phone_key] || "");
+  }
+
+  phone = phone.replace(/[^0-9]/g, "");
+  if (phone.length > 10) phone = phone.slice(-10);
+
+  if (!phone) {
+     return { outcome: "advanced", node_key: cfg.failure_next };
+  }
+
+  try {
+     const url = `https://api.rajeshpharma.com/wa/bills/${phone}`;
+     const res = await fetch(url);
+     const data = await res.json();
+     
+     if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+        const rows = data.data.slice(0, 10).map((b: any) => ({
+           id: b.invoice,
+           title: b.invoice,
+           description: b.name
+        }));
+        
+        const { whatsapp_message_id } = await engineSendInteractiveList({
+          accountId: run.account_id,
+          userId: run.user_id,
+          conversationId: run.conversation_id!,
+          contactId: run.contact_id!,
+          bodyText: cfg.list_text || "Select an order:",
+          buttonLabel: cfg.button_label || "View Orders",
+          sections: [{ title: "Orders", rows }]
+        });
+        
+        await logEvent(db, run.id, "message_sent", node.node_key, {
+          node_type: "fetch_orders",
+          whatsapp_message_id,
+        });
+        
+        const { data: msg } = await db
+          .from("messages")
+          .select("id")
+          .eq("message_id", whatsapp_message_id)
+          .maybeSingle();
+          
+        await db
+          .from("flow_runs")
+          .update({
+            last_prompt_message_id: (msg as { id: string } | null)?.id ?? null,
+          })
+          .eq("id", run.id);
+          
+        return { outcome: "advanced", node_key: node.node_key }; 
+     } else {
+        return { outcome: "advanced", node_key: cfg.failure_next };
+     }
+  } catch (err) {
+     await logEvent(db, run.id, "error", node.node_key, {
+       reason: "fetch_orders_failed",
+       detail: err instanceof Error ? err.message : String(err),
+     });
+     return { outcome: "advanced", node_key: cfg.failure_next };
+  }
 }
 
 async function executeHandoff(
@@ -847,6 +926,27 @@ async function advanceFromNodeKey(
       }
       return { outcome: "advanced" };
     }
+    if (node.node_type === "fetch_orders") {
+      const res = await fetchOrdersAndSuspend(db, run, node);
+      if (res.node_key === node.node_key) {
+        const advanced = await advanceCurrentNodeKey(
+          db,
+          run.id,
+          run.current_node_key,
+          node.node_key,
+        );
+        if (!advanced) {
+          await logEvent(db, run.id, "error", node.node_key, {
+            reason: "lost_race_during_advance",
+          });
+        }
+        return { outcome: "advanced" };
+      } else {
+        // If it failed to fetch orders, it advances to failure branch
+        currentKey = res.node_key;
+        continue;
+      }
+    }
     if (node.node_type === "handoff") {
       await executeHandoff(db, run, node);
       return { outcome: "handed_off" };
@@ -1011,9 +1111,33 @@ async function handleReplyForActiveRun(
   if (
     message.kind === "interactive_reply" &&
     (currentNode.node_type === "send_buttons" ||
-      currentNode.node_type === "send_list")
+      currentNode.node_type === "send_list" ||
+      currentNode.node_type === "fetch_orders")
   ) {
-    matched = matchReplyId(currentNode, message.reply_id);
+    if (currentNode.node_type === "fetch_orders") {
+      const cfg = currentNode.config as unknown as FetchOrdersNodeConfig;
+      matched = cfg.success_next;
+      const newVars = { ...run.vars, [cfg.var_key]: message.reply_id };
+      const { error: capErr } = await db
+        .from("flow_runs")
+        .update({
+          vars: newVars,
+          reprompt_count: 0,
+        })
+        .eq("id", run.id);
+      if (!capErr) {
+        run.vars = newVars;
+        run.reprompt_count = 0;
+        await logEvent(db, run.id, "node_entered", currentNode.node_key, {
+          captured_key: cfg.var_key,
+          captured_invoice: message.reply_id,
+        });
+      } else {
+        matched = null;
+      }
+    } else {
+      matched = matchReplyId(currentNode, message.reply_id);
+    }
   } else if (
     message.kind === "text" &&
     currentNode.node_type === "collect_input"
@@ -1093,6 +1217,8 @@ async function handleReplyForActiveRun(
       await sendButtonsAndSuspend(db, run, currentNode);
     } else if (currentNode.node_type === "send_list") {
       await sendListAndSuspend(db, run, currentNode);
+    } else if (currentNode.node_type === "fetch_orders") {
+      await fetchOrdersAndSuspend(db, run, currentNode);
     } else if (currentNode.node_type === "collect_input") {
       // Customer typed something we couldn't accept (empty after trim,
       // or var_key missing — rare). Re-send the prompt so they try again.

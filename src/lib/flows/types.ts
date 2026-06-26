@@ -193,6 +193,15 @@ export interface ApiCallNodeConfig {
   failure_next: string;
 }
 
+export interface FetchOrdersNodeConfig {
+  phone_key: string; // The variable or contact field containing the phone number
+  list_text: string;
+  button_label: string;
+  var_key: string;
+  success_next: string;
+  failure_next: string;
+}
+
 /**
  * Total union — every concrete node_type the v1 engine understands.
  * Add new node types here and the engine's switch will flag missing
@@ -213,6 +222,7 @@ export type FlowNodeConfig =
   | { node_type: "handoff"; config: HandoffNodeConfig }
   | { node_type: "fetch_invoice"; config: FetchInvoiceNodeConfig }
   | { node_type: "api_call"; config: ApiCallNodeConfig }
+  | { node_type: "fetch_orders"; config: FetchOrdersNodeConfig }
   | { node_type: "end"; config: EndNodeConfig };
 
 export type FlowNodeType = FlowNodeConfig["node_type"];

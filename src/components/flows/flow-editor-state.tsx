@@ -196,6 +196,15 @@ export function defaultConfigFor(type: NodeType): Record<string, unknown> {
         success_next: "",
         failure_next: "",
       };
+    case "fetch_orders":
+      return {
+        phone_key: "contact.phone",
+        list_text: "Select an order:",
+        button_label: "View Orders",
+        var_key: "selected_invoice",
+        success_next: "",
+        failure_next: "",
+      };
     case "end":
       return {};
   }

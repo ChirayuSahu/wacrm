@@ -86,7 +86,8 @@ export function deriveCanvasEdges(nodes: BuilderNode[]): CanvasEdge[] {
       }
 
       case "fetch_invoice":
-      case "api_call": {
+      case "api_call":
+      case "fetch_orders": {
         const successNext = (cfg as { success_next?: string }).success_next;
         const failureNext = (cfg as { failure_next?: string }).failure_next;
         if (successNext && knownKeys.has(successNext)) {
@@ -214,6 +215,7 @@ export function outgoingSlots(node: BuilderNode): OutgoingSlot[] {
 
     case "fetch_invoice":
     case "api_call":
+    case "fetch_orders":
       return [
         { id: "success", label: "success" },
         { id: "failure", label: "failure" },
@@ -295,6 +297,7 @@ export function applyEdgeConnection(
 
     case "fetch_invoice":
     case "api_call":
+    case "fetch_orders":
       if (sourceHandle === "success") return { success_next: targetKey };
       if (sourceHandle === "failure") return { failure_next: targetKey };
       return null;
@@ -403,7 +406,8 @@ function patchedConfigWithoutKey(
     }
 
     case "fetch_invoice":
-    case "api_call": {
+    case "api_call":
+    case "fetch_orders": {
       const c = cfg as { success_next?: string; failure_next?: string };
       const sMatch = c.success_next === deletedKey;
       const fMatch = c.failure_next === deletedKey;

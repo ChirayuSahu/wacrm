@@ -248,6 +248,56 @@ export function NodeConfigForm({
         />
       );
 
+    case "fetch_orders":
+      return (
+        <>
+          <TextRow
+            label="Phone variable key (e.g. contact.phone)"
+            value={(cfg as { phone_key?: string }).phone_key ?? ""}
+            onChange={(v) => onUpdateConfig({ phone_key: v })}
+          />
+          <TextRow
+            label="List message text"
+            value={(cfg as { list_text?: string }).list_text ?? "Select an order:"}
+            onChange={(v) => onUpdateConfig({ list_text: v })}
+          />
+          <TextRow
+            label="Button label"
+            value={(cfg as { button_label?: string }).button_label ?? "View Orders"}
+            onChange={(v) => onUpdateConfig({ button_label: v })}
+          />
+          <div>
+            <label className="mb-1 block text-xs text-muted-foreground">
+              Variable key (to store selected invoice)
+            </label>
+            <Input
+              value={(cfg as { var_key?: string }).var_key ?? ""}
+              onChange={(e) =>
+                onUpdateConfig({
+                  var_key: e.target.value.replace(/[^a-zA-Z0-9_]/g, ""),
+                })
+              }
+              placeholder="e.g. selected_invoice"
+              className="bg-muted font-mono text-xs"
+            />
+          </div>
+          <NextNodeRow
+            value={(cfg as { success_next?: string }).success_next ?? ""}
+            allNodes={allNodes}
+            currentKey={node.node_key}
+            onChange={(v) => onUpdateConfig({ success_next: v })}
+            label="On Order Selected (Success)"
+          />
+          <NextNodeRow
+            value={(cfg as { failure_next?: string }).failure_next ?? ""}
+            allNodes={allNodes}
+            currentKey={node.node_key}
+            onChange={(v) => onUpdateConfig({ failure_next: v })}
+            label="If no orders / API error (Failure)"
+          />
+        </>
+      );
+
     case "end":
       return (
         <p className="text-xs text-muted-foreground">

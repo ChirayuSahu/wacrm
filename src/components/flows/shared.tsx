@@ -52,6 +52,7 @@ export type NodeType =
   | "handoff"
   | "fetch_invoice"
   | "api_call"
+  | "fetch_orders"
   | "end";
 
 export interface BuilderNode {
@@ -123,6 +124,11 @@ export const NODE_META: Record<
     label: "API Call",
     icon: Webhook,
     color: "text-orange-500",
+  },
+  fetch_orders: {
+    label: "Fetch orders",
+    icon: Receipt,
+    color: "text-purple-500",
   },
   end: { label: "End", icon: Flag, color: "text-muted-foreground" },
 };
@@ -273,6 +279,10 @@ export function summarizeNode(node: BuilderNode): string | null {
       const method = typeof cfg.method === "string" ? cfg.method : "GET";
       const url = typeof cfg.url === "string" ? cfg.url : "";
       return url ? `${method} ${truncate(url, 40)}` : "Make HTTP request";
+    }
+    case "fetch_orders": {
+      const varKey = typeof cfg.var_key === "string" ? cfg.var_key : "";
+      return varKey ? `Stores selected order in vars.${varKey}` : "Fetch and show orders";
     }
   }
 }

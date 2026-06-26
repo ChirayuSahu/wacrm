@@ -657,6 +657,7 @@ const ADD_NODE_TYPES: NodeType[] = [
   "set_tag",
   "fetch_invoice",
   "api_call",
+  "fetch_orders",
   "handoff",
   "end",
 ];
