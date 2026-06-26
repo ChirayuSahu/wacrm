@@ -854,6 +854,7 @@ async function advanceFromNodeKey(
           if (cleanContactPhone && cleanApiPhone && cleanContactPhone === cleanApiPhone) {
              phoneMatch = true;
              run.vars[cfg.var_key] = data.data.status;
+             interpolationVars[cfg.var_key] = data.data.status;
              
              // Update vars in DB
              await db.from("flow_runs").update({ vars: run.vars }).eq("id", run.id);
@@ -896,6 +897,7 @@ async function advanceFromNodeKey(
             const val = d.path.split('.').reduce((obj, key) => (obj && typeof obj === 'object') ? obj[key] : undefined, data);
             if (val !== undefined) {
               run.vars[d.var_key] = val;
+              interpolationVars[d.var_key] = val;
               dirty = true;
             }
           }
