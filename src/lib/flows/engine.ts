@@ -881,6 +881,11 @@ async function advanceFromNodeKey(
         for (const h of cfg.headers ?? []) {
           if (h.key) headers[h.key] = interpolateVars(h.value, interpolationVars);
         }
+        
+        // Auto-inject Rajesh Pharma Auth Token
+        if (url.includes("rajeshpharma.com") && !headers["Authorization"]) {
+           headers["Authorization"] = `Bearer ${process.env.WA_REVERIFY_TOKEN ?? ""}`;
+        }
         const method = cfg.method || "GET";
         const body = method !== "GET" && method !== "DELETE" && cfg.body
           ? interpolateVars(cfg.body, interpolationVars)
