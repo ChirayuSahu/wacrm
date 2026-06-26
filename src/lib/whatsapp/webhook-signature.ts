@@ -23,8 +23,6 @@ export function verifyMetaWebhookSignature(
   signatureHeader: string | null,
 ): boolean {
   const secret = process.env.META_APP_SECRET
-
-  console.log("Body:", rawBody);
   if (!secret) {
     console.error(
       '[webhook] META_APP_SECRET is not set — rejecting request. ' +

@@ -836,6 +836,8 @@ async function advanceFromNodeKey(
           const cleanContactPhone = contactPhone?.replace(/[^0-9]/g, "").slice(-10);
           const cleanApiPhone = data.data.mobile?.replace(/[^0-9]/g, "").slice(-10);
           
+          console.log("FETCH INVOICE MATCH:", { contactPhone, apiPhone: data.data?.mobile, cleanContactPhone, cleanApiPhone });
+          
           if (cleanContactPhone && cleanApiPhone && cleanContactPhone === cleanApiPhone) {
              phoneMatch = true;
              run.vars[cfg.var_key] = data.data.status;
