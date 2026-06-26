@@ -469,8 +469,7 @@ async function fetchOrdersAndSuspend(
      if (data.success && Array.isArray(data.data) && data.data.length > 0) {
         const rows = data.data.slice(0, 10).map((b: any) => ({
            id: b.invoice,
-           title: b.invoice,
-           description: b.name
+           title: b.invoice
         }));
         
         const { whatsapp_message_id } = await engineSendInteractiveList({
