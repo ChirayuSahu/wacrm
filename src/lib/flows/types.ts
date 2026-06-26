@@ -202,6 +202,11 @@ export interface FetchOrdersNodeConfig {
   failure_next: string;
 }
 
+export interface ContinueFlowNodeConfig {
+  /** Target flow_id to start after the current flow completes. */
+  target_flow_id: string;
+}
+
 /**
  * Total union — every concrete node_type the v1 engine understands.
  * Add new node types here and the engine's switch will flag missing
@@ -223,7 +228,8 @@ export type FlowNodeConfig =
   | { node_type: "fetch_invoice"; config: FetchInvoiceNodeConfig }
   | { node_type: "api_call"; config: ApiCallNodeConfig }
   | { node_type: "fetch_orders"; config: FetchOrdersNodeConfig }
-  | { node_type: "end"; config: EndNodeConfig };
+  | { node_type: "end"; config: EndNodeConfig }
+  | { node_type: "continue_flow"; config: ContinueFlowNodeConfig };
 
 export type FlowNodeType = FlowNodeConfig["node_type"];
 

@@ -59,6 +59,7 @@ import {
   type FetchInvoiceNodeConfig,
   type ApiCallNodeConfig,
   type FetchOrdersNodeConfig,
+  type ContinueFlowNodeConfig,
 } from "./types";
 import { fetchBackend } from "../backend-client";
 
@@ -596,8 +597,10 @@ async function evaluateConditionNode(
  */
 function interpolateVars(template: string, vars: Record<string, unknown>): string {
   if (!template) return "";
-  return template.replace(/\{\{vars\.([a-zA-Z0-9_]+)\}\}/g, (_, key) => {
-    const v = vars[key];
+  // Supports {{vars.foo}} or {{contact.phone}}
+  return template.replace(/\{\{(vars|contact)\.([a-zA-Z0-9_]+)\}\}/g, (_, prefix, key) => {
+    const lookupKey = prefix === "contact" ? `contact.${key}` : key;
+    const v = vars[lookupKey];
     return v === undefined || v === null ? "" : String(v);
   });
 }
@@ -632,6 +635,19 @@ async function advanceFromNodeKey(
   nodes: Map<string, FlowNodeRow>,
 ): Promise<{ outcome: "advanced" | "completed" | "handed_off" }> {
   let currentKey: string | null = startNodeKey;
+  
+  // Pre-load contact to support {{contact.phone}} in interpolation
+  let interpolationVars = run.vars;
+  if (run.contact_id) {
+    const { data: contact } = await db.from("contacts").select("name, phone").eq("id", run.contact_id).maybeSingle();
+    if (contact) {
+      interpolationVars = {
+        ...run.vars,
+        "contact.name": contact.name,
+        "contact.phone": contact.phone?.replace(/[^0-9]/g, ""),
+      };
+    }
+  }
   // Defensive cap — if a flow has a cycle (which the validator
   // SHOULD catch but doesn't yet in v1), we bail rather than loop.
   for (let safety = 0; safety < 64; safety += 1) {
@@ -666,7 +682,7 @@ async function advanceFromNodeKey(
     userId: run.user_id,
           conversationId: run.conversation_id!,
           contactId: run.contact_id!,
-          text: interpolateVars(cfg.text, run.vars),
+          text: interpolateVars(cfg.text, interpolationVars),
         });
         await logEvent(db, run.id, "message_sent", node.node_key, {
           node_type: "send_message",
@@ -694,7 +710,7 @@ async function advanceFromNodeKey(
           kind: cfg.media_type,
           link: cfg.media_url,
           caption: cfg.caption
-            ? interpolateVars(cfg.caption, run.vars)
+            ? interpolateVars(cfg.caption, interpolationVars)
             : undefined,
           filename: cfg.filename,
         });
@@ -724,7 +740,7 @@ async function advanceFromNodeKey(
     userId: run.user_id,
           conversationId: run.conversation_id!,
           contactId: run.contact_id!,
-          text: interpolateVars(cfg.prompt_text, run.vars),
+          text: interpolateVars(cfg.prompt_text, interpolationVars),
         });
         await logEvent(db, run.id, "message_sent", node.node_key, {
           node_type: "collect_input",
@@ -817,7 +833,7 @@ async function advanceFromNodeKey(
       const cfg = node.config as unknown as FetchInvoiceNodeConfig;
       let phoneMatch = false;
       try {
-        const invoiceId = interpolateVars(cfg.invoice_id, run.vars);
+        const invoiceId = interpolateVars(cfg.invoice_id, interpolationVars);
         const data = await fetchBackend(`/wa/status/${invoiceId}`);
         
         if (data.success && data.data) {
@@ -856,14 +872,14 @@ async function advanceFromNodeKey(
       const cfg = node.config as unknown as ApiCallNodeConfig;
       let success = false;
       try {
-        const url = interpolateVars(cfg.url, run.vars);
+        const url = interpolateVars(cfg.url, interpolationVars);
         const headers: Record<string, string> = {};
         for (const h of cfg.headers ?? []) {
-          if (h.key) headers[h.key] = interpolateVars(h.value, run.vars);
+          if (h.key) headers[h.key] = interpolateVars(h.value, interpolationVars);
         }
         const method = cfg.method || "GET";
         const body = method !== "GET" && method !== "DELETE" && cfg.body
-          ? interpolateVars(cfg.body, run.vars)
+          ? interpolateVars(cfg.body, interpolationVars)
           : undefined;
 
         const response = await fetch(url, { method, headers, body });
@@ -956,6 +972,38 @@ async function advanceFromNodeKey(
     if (node.node_type === "end") {
       await logEvent(db, run.id, "completed", node.node_key);
       await endRun(db, run.id, "completed", "end_node");
+      return { outcome: "completed" };
+    }
+    if (node.node_type === "continue_flow") {
+      const cfg = node.config as unknown as ContinueFlowNodeConfig;
+      
+      await logEvent(db, run.id, "completed", node.node_key);
+      await endRun(db, run.id, "completed", "continued_flow");
+      
+      // Load the target flow
+      const { data: targetFlow, error } = await db
+        .from("flows")
+        .select("*")
+        .eq("id", cfg.target_flow_id)
+        .eq("status", "active")
+        .maybeSingle();
+        
+      if (!error && targetFlow) {
+        const typedFlow = targetFlow as FlowRow;
+        const newNodes = await loadAllNodes(db, typedFlow.id);
+        
+        // Use the original inbound message input
+        const triggerInput = {
+          accountId: run.account_id,
+          userId: run.user_id,
+          contactId: run.contact_id!,
+          conversationId: run.conversation_id!,
+          message: { kind: "text", text: "", meta_message_id: "" } as ParsedInbound, // Dummy trigger since it's an internal jump
+          isFirstInboundMessage: false
+        };
+        
+        await startNewRun(db, typedFlow, triggerInput, newNodes);
+      }
       return { outcome: "completed" };
     }
     // Unknown node type — shouldn't happen given the CHECK constraint.

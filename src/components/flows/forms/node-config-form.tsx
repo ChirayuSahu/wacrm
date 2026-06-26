@@ -298,6 +298,14 @@ export function NodeConfigForm({
         </>
       );
 
+    case "continue_flow":
+      return (
+        <ContinueFlowForm
+          cfg={cfg as { target_flow_id?: string }}
+          onUpdateConfig={onUpdateConfig}
+        />
+      );
+
     case "end":
       return (
         <p className="text-xs text-muted-foreground">
@@ -1308,6 +1316,61 @@ function ApiCallForm({
         onChange={(v) => onUpdateConfig({ failure_next: v })}
         label="If failure (non-2xx)"
       />
+    </div>
+  );
+}
+
+function ContinueFlowForm({
+  cfg,
+  onUpdateConfig,
+}: {
+  cfg: { target_flow_id?: string };
+  onUpdateConfig: (patch: Record<string, unknown>) => void;
+}) {
+  const [flows, setFlows] = useState<{ id: string; name: string }[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/flows")
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setFlows(data);
+        }
+      })
+      .catch((err) => console.error("Failed to fetch flows:", err))
+      .finally(() => setLoading(false));
+  }, []);
+
+  return (
+    <div>
+      <label className="mb-1 block text-xs font-medium">Target Flow</label>
+      {loading ? (
+        <div className="flex items-center space-x-2 text-xs text-muted-foreground">
+          <Loader2 className="h-3 w-3 animate-spin" />
+          <span>Loading flows...</span>
+        </div>
+      ) : (
+        <Select
+          value={cfg.target_flow_id ?? ""}
+          onValueChange={(val) => onUpdateConfig({ target_flow_id: val })}
+        >
+          <SelectTrigger className="h-8 text-xs">
+            <SelectValue placeholder="Select a flow..." />
+          </SelectTrigger>
+          <SelectContent>
+            {flows.map((f) => (
+              <SelectItem key={f.id} value={f.id} className="text-xs">
+                {f.name || "Untitled Flow"}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
+      <p className="mt-2 text-[10px] text-muted-foreground">
+        When the run hits this node, it will instantly finish and launch the
+        selected flow.
+      </p>
     </div>
   );
 }

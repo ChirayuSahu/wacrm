@@ -30,6 +30,7 @@ import {
   UserPlus,
   Webhook,
   Workflow,
+  FastForward,
 } from "lucide-react";
 
 // ============================================================
@@ -53,7 +54,8 @@ export type NodeType =
   | "fetch_invoice"
   | "api_call"
   | "fetch_orders"
-  | "end";
+  | "end"
+  | "continue_flow";
 
 export interface BuilderNode {
   node_key: string;
@@ -129,6 +131,11 @@ export const NODE_META: Record<
     label: "Fetch orders",
     icon: Receipt,
     color: "text-purple-500",
+  },
+  continue_flow: {
+    label: "Continue Flow",
+    icon: FastForward,
+    color: "text-green-500",
   },
   end: { label: "End", icon: Flag, color: "text-muted-foreground" },
 };
@@ -283,6 +290,10 @@ export function summarizeNode(node: BuilderNode): string | null {
     case "fetch_orders": {
       const varKey = typeof cfg.var_key === "string" ? cfg.var_key : "";
       return varKey ? `Stores selected order in vars.${varKey}` : "Fetch and show orders";
+    }
+    case "continue_flow": {
+      const target = typeof cfg.target_flow_id === "string" ? cfg.target_flow_id : "";
+      return target ? `Jump to flow` : "Target flow not selected";
     }
   }
 }

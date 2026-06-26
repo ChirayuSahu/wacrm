@@ -205,6 +205,8 @@ export function defaultConfigFor(type: NodeType): Record<string, unknown> {
         success_next: "",
         failure_next: "",
       };
+    case "continue_flow":
+      return { target_flow_id: "" };
     case "end":
       return {};
   }

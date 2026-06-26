@@ -841,6 +841,20 @@ function validateNode(
       // beyond their existence.
       break;
 
+    case "continue_flow": {
+      const cfg = node.config as { target_flow_id?: string };
+      if (!cfg.target_flow_id?.trim()) {
+        issues.push({
+          severity: "error",
+          scope: "node",
+          node_key: node.node_key,
+          field: "target_flow_id",
+          message: "Continue Flow node must select a target flow.",
+        });
+      }
+      break;
+    }
+
     default:
       issues.push({
         severity: "error",
@@ -942,6 +956,7 @@ function outgoingEdges(node: NodeInput): string[] {
     }
     case "handoff":
     case "end":
+    case "continue_flow":
     default:
       return [];
   }
