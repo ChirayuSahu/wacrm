@@ -876,6 +876,10 @@ async function advanceFromNodeKey(
                run.vars[`${cfg.var_key}_items`] = itemsStr;
                interpolationVars[`${cfg.var_key}_items`] = itemsStr;
              }
+             if (data.data.amount !== undefined) {
+               run.vars[`${cfg.var_key}_amount`] = data.data.amount;
+               interpolationVars[`${cfg.var_key}_amount`] = data.data.amount;
+             }
              
              // Update vars in DB
              await db.from("flow_runs").update({ vars: run.vars }).eq("id", run.id);
