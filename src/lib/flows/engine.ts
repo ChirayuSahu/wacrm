@@ -644,10 +644,12 @@ async function advanceFromNodeKey(
   if (run.contact_id) {
     const { data: contact } = await db.from("contacts").select("name, phone").eq("id", run.contact_id).maybeSingle();
     if (contact) {
+      const cleanPhone = contact.phone?.replace(/[^0-9]/g, "") || "";
       interpolationVars = {
         ...run.vars,
         "contact.name": contact.name,
-        "contact.phone": contact.phone?.replace(/[^0-9]/g, ""),
+        "contact.phone": cleanPhone,
+        "contact.phone_local": cleanPhone.slice(-10),
       };
     }
   }
