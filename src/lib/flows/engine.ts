@@ -556,6 +556,8 @@ async function fetchAllSrAndSuspend(
 ): Promise<{ outcome: "advanced" | "failed"; node_key: string }> {
   const cfg = node.config as unknown as FetchAllSrNodeConfig;
   
+  console.log(`[fetch_all_sr] node entered. phone_key config:`, cfg.phone_key);
+  
   let phone = "";
   if (cfg.phone_key === "contact.phone") {
     const { data: contactData } = await db
@@ -1011,8 +1013,10 @@ async function advanceFromNodeKey(
     if (node.node_type === "fetch_sr") {
       const cfg = node.config as unknown as FetchSrNodeConfig;
       let phoneMatch = false;
+      console.log(`[fetch_sr] node entered. sr_id config:`, cfg.sr_id);
       try {
         const srId = interpolateVars(cfg.sr_id, interpolationVars);
+        console.log(`[fetch_sr] interpolated srId:`, srId);
         
         // get contact's phone
         const { data: contactData } = await db
@@ -1048,6 +1052,7 @@ async function advanceFromNodeKey(
           }
         }
       } catch (err) {
+        console.error("[fetch_sr] error in try-catch:", err);
         await logEvent(db, run.id, "error", node.node_key, {
           reason: "fetch_sr_failed",
           detail: err instanceof Error ? err.message : String(err),
