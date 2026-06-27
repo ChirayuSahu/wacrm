@@ -334,7 +334,7 @@ export interface FlowFallbackPolicy {
 export const DEFAULT_FALLBACK_POLICY: FlowFallbackPolicy = {
   on_unknown_reply: "reprompt",
   max_reprompts: 2,
-  on_timeout_minutes: 1, // Defaulting to 1 minute as requested
+  on_timeout_minutes: 2, // Defaulting to 2 minutes as requested
   on_exhaust: "handoff",
 };
 
