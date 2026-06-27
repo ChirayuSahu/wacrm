@@ -1435,6 +1435,7 @@ function SendCtaForm({
           label="Text sent to the customer"
           value={cfg.text ?? ""}
           onChange={(v) => onUpdateConfig({ text: v })}
+          rows={3}
         />
 
         {showAdvanced && (
