@@ -859,6 +859,24 @@ async function advanceFromNodeKey(
              run.vars[cfg.var_key] = data.data.status;
              interpolationVars[cfg.var_key] = data.data.status;
              
+             if (data.data.name) {
+               run.vars[`${cfg.var_key}_name`] = data.data.name;
+               interpolationVars[`${cfg.var_key}_name`] = data.data.name;
+             }
+             if (data.data.mobile) {
+               run.vars[`${cfg.var_key}_mobile`] = data.data.mobile;
+               interpolationVars[`${cfg.var_key}_mobile`] = data.data.mobile;
+             }
+             if (data.data.deliveryMan) {
+               run.vars[`${cfg.var_key}_deliveryMan`] = data.data.deliveryMan;
+               interpolationVars[`${cfg.var_key}_deliveryMan`] = data.data.deliveryMan;
+             }
+             if (data.data.items && Array.isArray(data.data.items)) {
+               const itemsStr = data.data.items.map((i: any) => `${i.name} - (${i.qty})`).join('\n');
+               run.vars[`${cfg.var_key}_items`] = itemsStr;
+               interpolationVars[`${cfg.var_key}_items`] = itemsStr;
+             }
+             
              // Update vars in DB
              await db.from("flow_runs").update({ vars: run.vars }).eq("id", run.id);
           }

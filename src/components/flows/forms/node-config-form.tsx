@@ -220,6 +220,21 @@ export function NodeConfigForm({
               placeholder="e.g. invoice_status"
               className="bg-muted font-mono text-xs"
             />
+            {(() => {
+              const base = (cfg as { var_key?: string }).var_key || "invoice_status";
+              return (
+                <div className="mt-2 text-[10px] text-muted-foreground bg-muted/50 p-2 rounded-md">
+                  <span className="font-semibold block mb-1">Available Variables:</span>
+                  <ul className="list-disc list-inside space-y-0.5">
+                    <li><code>{`{{vars.${base}}}`}</code> (Status)</li>
+                    <li><code>{`{{vars.${base}_name}}`}</code></li>
+                    <li><code>{`{{vars.${base}_mobile}}`}</code></li>
+                    <li><code>{`{{vars.${base}_deliveryMan}}`}</code></li>
+                    <li><code>{`{{vars.${base}_items}}`}</code></li>
+                  </ul>
+                </div>
+              );
+            })()}
           </div>
           <NextNodeRow
             value={(cfg as { success_next?: string }).success_next ?? ""}
