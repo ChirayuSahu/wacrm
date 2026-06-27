@@ -837,6 +837,102 @@ function validateNode(
       break;
     }
 
+    case "fetch_sr": {
+      const cfg = node.config as {
+        sr_id?: string;
+        var_key?: string;
+        success_next?: string;
+        failure_next?: string;
+      };
+      if (!cfg.sr_id?.trim()) {
+        issues.push({
+          severity: "error",
+          scope: "node",
+          node_key: node.node_key,
+          field: "sr_id",
+          message: "Fetch-SR needs an SR ID to query.",
+        });
+      }
+      if (!cfg.var_key?.trim()) {
+        issues.push({
+          severity: "error",
+          scope: "node",
+          node_key: node.node_key,
+          field: "var_key",
+          message: "Fetch-SR needs a var_key to store the status under.",
+        });
+      }
+      for (const branch of ["success_next", "failure_next"] as const) {
+        const key = cfg[branch];
+        if (!key) {
+          issues.push({
+            severity: "error",
+            scope: "node",
+            node_key: node.node_key,
+            field: branch,
+            message: `Fetch-SR needs a node for the "${branch === "success_next" ? "success" : "failure"}" branch.`,
+          });
+        } else if (!knownKeys.has(key)) {
+          issues.push({
+            severity: "error",
+            scope: "node",
+            node_key: node.node_key,
+            field: branch,
+            message: `Fetch-SR's "${branch}" points to non-existent node "${key}".`,
+          });
+        }
+      }
+      break;
+    }
+
+    case "fetch_all_sr": {
+      const cfg = (node.config || {}) as {
+        phone_key?: string;
+        var_key?: string;
+        success_next?: string;
+        failure_next?: string;
+      };
+      if (!cfg.phone_key?.trim()) {
+        issues.push({
+          severity: "error",
+          scope: "node",
+          node_key: node.node_key,
+          field: "phone_key",
+          message: "Fetch-All-SR needs a phone_key to query returns for.",
+        });
+      }
+      if (!cfg.var_key?.trim()) {
+        issues.push({
+          severity: "error",
+          scope: "node",
+          node_key: node.node_key,
+          field: "var_key",
+          message: "Fetch-All-SR needs a var_key to store the selected return.",
+        });
+      }
+      for (const branch of ["success_next", "failure_next"] as const) {
+        const key = cfg[branch];
+        if (!key) {
+          issues.push({
+            severity: "error",
+            scope: "node",
+            node_key: node.node_key,
+            field: branch,
+            message: `Fetch-All-SR needs a node for the "${branch === "success_next" ? "success" : "failure"}" branch.`,
+          });
+        } else if (!knownKeys.has(key)) {
+          issues.push({
+            severity: "error",
+            scope: "node",
+            node_key: node.node_key,
+            field: branch,
+            message: `Fetch-All-SR's "${branch}" points to non-existent node "${key}".`,
+          });
+        }
+      }
+      break;
+    }
+
     case "api_call": {
       const cfg = node.config as {
         url?: string;
@@ -965,7 +1061,9 @@ function outgoingEdges(node: NodeInput): string[] {
       if (cfg.failure_next) out.push(cfg.failure_next);
       return out;
     }
-    case "fetch_orders": {
+    case "fetch_orders":
+    case "fetch_sr":
+    case "fetch_all_sr": {
       const cfg = node.config as {
         success_next?: string;
         failure_next?: string;

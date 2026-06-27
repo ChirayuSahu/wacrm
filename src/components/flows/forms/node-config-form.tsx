@@ -325,6 +325,109 @@ export function NodeConfigForm({
         </>
       );
 
+    case "fetch_sr":
+      return (
+        <>
+          <TextRow
+            label="SR ID (supports {{vars.key}})"
+            value={(cfg as { sr_id?: string }).sr_id ?? ""}
+            onChange={(v) => onUpdateConfig({ sr_id: v })}
+          />
+          <div>
+            <label className="mb-1 block text-xs text-muted-foreground">
+              Variable key (to store status)
+            </label>
+            <Input
+              value={(cfg as { var_key?: string }).var_key ?? ""}
+              onChange={(e) =>
+                onUpdateConfig({
+                  var_key: e.target.value.replace(/[^a-zA-Z0-9_]/g, ""),
+                })
+              }
+              placeholder="e.g. sr_status"
+              className="bg-muted font-mono text-xs"
+            />
+            {(() => {
+              const base = (cfg as { var_key?: string }).var_key || "sr_status";
+              return (
+                <div className="mt-2 text-[10px] text-muted-foreground bg-muted/50 p-2 rounded-md">
+                  <span className="font-semibold block mb-1">Available Variables:</span>
+                  <ul className="list-disc list-inside space-y-0.5">
+                    <li><code>{`{{vars.${base}}}`}</code> (Status)</li>
+                    <li><code>{`{{vars.${base}_items}}`}</code></li>
+                    <li><code>{`{{vars.${base}_amount}}`}</code></li>
+                  </ul>
+                </div>
+              );
+            })()}
+          </div>
+          <NextNodeRow
+            value={(cfg as { success_next?: string }).success_next ?? ""}
+            allNodes={allNodes}
+            currentKey={node.node_key}
+            onChange={(v) => onUpdateConfig({ success_next: v })}
+            label="If phone matches (Success)"
+          />
+          <NextNodeRow
+            value={(cfg as { failure_next?: string }).failure_next ?? ""}
+            allNodes={allNodes}
+            currentKey={node.node_key}
+            onChange={(v) => onUpdateConfig({ failure_next: v })}
+            label="If phone mismatch (Failure)"
+          />
+        </>
+      );
+
+    case "fetch_all_sr":
+      return (
+        <>
+          <TextRow
+            label="Phone variable key (e.g. contact.phone)"
+            value={(cfg as { phone_key?: string }).phone_key ?? ""}
+            onChange={(v) => onUpdateConfig({ phone_key: v })}
+          />
+          <TextRow
+            label="List message text"
+            value={(cfg as { list_text?: string }).list_text ?? "Select a sales return:"}
+            onChange={(v) => onUpdateConfig({ list_text: v })}
+          />
+          <TextRow
+            label="Button label"
+            value={(cfg as { button_label?: string }).button_label ?? "View Returns"}
+            onChange={(v) => onUpdateConfig({ button_label: v })}
+          />
+          <div>
+            <label className="mb-1 block text-xs text-muted-foreground">
+              Variable key (to store selected SR)
+            </label>
+            <Input
+              value={(cfg as { var_key?: string }).var_key ?? ""}
+              onChange={(e) =>
+                onUpdateConfig({
+                  var_key: e.target.value.replace(/[^a-zA-Z0-9_]/g, ""),
+                })
+              }
+              placeholder="e.g. selected_sr"
+              className="bg-muted font-mono text-xs"
+            />
+          </div>
+          <NextNodeRow
+            value={(cfg as { success_next?: string }).success_next ?? ""}
+            allNodes={allNodes}
+            currentKey={node.node_key}
+            onChange={(v) => onUpdateConfig({ success_next: v })}
+            label="On SR Selected (Success)"
+          />
+          <NextNodeRow
+            value={(cfg as { failure_next?: string }).failure_next ?? ""}
+            allNodes={allNodes}
+            currentKey={node.node_key}
+            onChange={(v) => onUpdateConfig({ failure_next: v })}
+            label="If no SRs / API error (Failure)"
+          />
+        </>
+      );
+
     case "continue_flow":
       return (
         <ContinueFlowForm

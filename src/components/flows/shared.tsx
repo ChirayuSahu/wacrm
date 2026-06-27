@@ -32,6 +32,7 @@ import {
   Workflow,
   FastForward,
   ExternalLink,
+  ShoppingBag,
 } from "lucide-react";
 
 // ============================================================
@@ -56,6 +57,8 @@ export type NodeType =
   | "fetch_invoice"
   | "api_call"
   | "fetch_orders"
+  | "fetch_sr"
+  | "fetch_all_sr"
   | "end"
   | "continue_flow";
 
@@ -76,7 +79,7 @@ export interface BuilderNode {
 
 export const NODE_META: Record<
   NodeType,
-  { label: string; icon: typeof Workflow; color: string }
+  { label: string; icon: typeof Workflow; color: string; description?: string }
 > = {
   start: { label: "Start", icon: PlayCircle, color: "text-emerald-400" },
   send_message: {
@@ -135,9 +138,22 @@ export const NODE_META: Record<
     color: "text-orange-500",
   },
   fetch_orders: {
-    label: "Fetch orders",
+    icon: ShoppingBag,
+    label: "Fetch Orders",
+    description: "Fetch recent orders from backend and present to user",
+    color: "bg-blue-50 text-blue-600 border-blue-200",
+  },
+  fetch_sr: {
     icon: Receipt,
-    color: "text-purple-500",
+    label: "Fetch SR",
+    description: "Fetch sales return details from backend",
+    color: "bg-fuchsia-50 text-fuchsia-600 border-fuchsia-200",
+  },
+  fetch_all_sr: {
+    icon: ShoppingBag,
+    label: "Fetch All SRs",
+    description: "Fetch all sales returns and present to user",
+    color: "bg-fuchsia-50 text-fuchsia-600 border-fuchsia-200",
   },
   continue_flow: {
     label: "Continue Flow",
@@ -294,17 +310,26 @@ export function summarizeNode(node: BuilderNode): string | null {
       return note.length > 0 ? truncate(note) : null;
     }
     case "fetch_invoice": {
-      const varKey = typeof cfg.var_key === "string" ? cfg.var_key : "";
-      return varKey ? `Checks phone, stores vars.${varKey}` : "Fetch invoice status";
+      const c = cfg as Record<string, any>;
+      return `Fetch invoice ID: ${c.invoice_id || "(empty)"}`;
     }
     case "api_call": {
       const method = typeof cfg.method === "string" ? cfg.method : "GET";
       const url = typeof cfg.url === "string" ? cfg.url : "";
-      return url ? `${method} ${truncate(url, 40)}` : "Make HTTP request";
+      if (!url) return null;
+      return `${method} ${truncate(url, 40)}`;
     }
     case "fetch_orders": {
       const varKey = typeof cfg.var_key === "string" ? cfg.var_key : "";
       return varKey ? `Stores selected order in vars.${varKey}` : "Fetch and show orders";
+    }
+    case "fetch_sr": {
+      const c = cfg as Record<string, any>;
+      return `Fetch SR ID: ${c.sr_id || "(empty)"}`;
+    }
+    case "fetch_all_sr": {
+      const c = cfg as Record<string, any>;
+      return `Fetch all SRs for phone: ${c.phone_key || "(empty)"}`;
     }
     case "continue_flow": {
       const target = typeof cfg.target_flow_id === "string" ? cfg.target_flow_id : "";

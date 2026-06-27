@@ -61,6 +61,8 @@ import {
   type FetchInvoiceNodeConfig,
   type ApiCallNodeConfig,
   type FetchOrdersNodeConfig,
+  type FetchSrNodeConfig,
+  type FetchAllSrNodeConfig,
   type ContinueFlowNodeConfig,
 } from "./types";
 import { fetchBackend } from "../backend-client";
@@ -128,6 +130,8 @@ export function isAutoAdvancing(node_type: string): boolean {
     node_type === "fetch_invoice" ||
     node_type === "api_call" ||
     node_type === "fetch_orders" ||
+    node_type === "fetch_sr" ||
+    node_type === "fetch_all_sr" ||
     node_type === "continue_flow"
   );
 }
@@ -545,6 +549,83 @@ async function fetchOrdersAndSuspend(
   }
 }
 
+async function fetchAllSrAndSuspend(
+  db: AdminClient,
+  run: FlowRunRow,
+  node: FlowNodeRow,
+): Promise<{ outcome: "advanced" | "failed"; node_key: string }> {
+  const cfg = node.config as unknown as FetchAllSrNodeConfig;
+  
+  let phone = "";
+  if (cfg.phone_key === "contact.phone") {
+    const { data: contactData } = await db
+      .from("contacts")
+      .select("phone")
+      .eq("id", run.contact_id!)
+      .maybeSingle();
+    phone = (contactData as { phone?: string } | null)?.phone || "";
+  } else {
+    phone = String(run.vars[cfg.phone_key] || "");
+  }
+
+  phone = phone.replace(/[^0-9]/g, "");
+  if (phone.length > 10) phone = phone.slice(-10);
+
+  if (!phone) {
+     return { outcome: "advanced", node_key: cfg.failure_next };
+  }
+
+  try {
+     const data = await fetchBackend(`/wa/sr/${phone}`);
+     
+     if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+        const rows = data.data.slice(0, 10).map((s: any) => ({
+           id: s.sr,
+           title: s.sr,
+           description: s.date
+        }));
+        
+        const { whatsapp_message_id } = await engineSendInteractiveList({
+          accountId: run.account_id,
+          userId: run.user_id,
+          conversationId: run.conversation_id!,
+          contactId: run.contact_id!,
+          bodyText: cfg.list_text || "Select a sales return:",
+          buttonLabel: cfg.button_label || "View Returns",
+          sections: [{ title: "Sales Returns", rows }]
+        });
+        
+        await logEvent(db, run.id, "message_sent", node.node_key, {
+          node_type: "fetch_all_sr",
+          whatsapp_message_id,
+        });
+        
+        const { data: msg } = await db
+          .from("messages")
+          .select("id")
+          .eq("message_id", whatsapp_message_id)
+          .maybeSingle();
+          
+        await db
+          .from("flow_runs")
+          .update({
+            last_prompt_message_id: (msg as { id: string } | null)?.id ?? null,
+          })
+          .eq("id", run.id);
+          
+        return { outcome: "advanced", node_key: node.node_key }; 
+     } else {
+        return { outcome: "advanced", node_key: cfg.failure_next };
+     }
+  } catch (err) {
+     await logEvent(db, run.id, "error", node.node_key, {
+       reason: "fetch_all_sr_failed",
+       detail: err instanceof Error ? err.message : String(err),
+     });
+     return { outcome: "advanced", node_key: cfg.failure_next };
+  }
+}
+
 async function executeHandoff(
   db: AdminClient,
   run: FlowRunRow,
@@ -926,6 +1007,53 @@ async function advanceFromNodeKey(
       currentKey = phoneMatch ? cfg.success_next : cfg.failure_next;
       continue;
     }
+    if (node.node_type === "fetch_sr") {
+      const cfg = node.config as unknown as FetchSrNodeConfig;
+      let phoneMatch = false;
+      try {
+        const srId = interpolateVars(cfg.sr_id, interpolationVars);
+        
+        // get contact's phone
+        const { data: contactData } = await db
+          .from("contacts")
+          .select("phone")
+          .eq("id", run.contact_id!)
+          .maybeSingle();
+          
+        const contactPhone = (contactData as { phone?: string } | null)?.phone;
+        const cleanContactPhone = contactPhone?.replace(/[^0-9]/g, "").slice(-10);
+        
+        if (cleanContactPhone) {
+          const data = await fetchBackend(`/wa/sr-details/${srId}?phone=${cleanContactPhone}`);
+          
+          if (data.success && data.data) {
+             phoneMatch = true;
+             run.vars[cfg.var_key] = data.data.sr;
+             interpolationVars[cfg.var_key] = data.data.sr;
+             
+             if (data.data.items && Array.isArray(data.data.items)) {
+               const itemsStr = data.data.items.map((i: any) => `${i.name} - (${i.qty})`).join('\n');
+               run.vars[`${cfg.var_key}_items`] = itemsStr;
+               interpolationVars[`${cfg.var_key}_items`] = itemsStr;
+             }
+             if (data.data.amount !== undefined) {
+               run.vars[`${cfg.var_key}_amount`] = data.data.amount;
+               interpolationVars[`${cfg.var_key}_amount`] = data.data.amount;
+             }
+             
+             // Update vars in DB
+             await db.from("flow_runs").update({ vars: run.vars }).eq("id", run.id);
+          }
+        }
+      } catch (err) {
+        await logEvent(db, run.id, "error", node.node_key, {
+          reason: "fetch_sr_failed",
+          detail: err instanceof Error ? err.message : String(err),
+        });
+      }
+      currentKey = phoneMatch ? cfg.success_next : cfg.failure_next;
+      continue;
+    }
     if (node.node_type === "api_call") {
       const cfg = node.config as unknown as ApiCallNodeConfig;
       let success = false;
@@ -1030,6 +1158,27 @@ async function advanceFromNodeKey(
         return { outcome: "advanced" };
       } else {
         // If it failed to fetch orders, it advances to failure branch
+        currentKey = res.node_key;
+        continue;
+      }
+    }
+    if (node.node_type === "fetch_all_sr") {
+      const res = await fetchAllSrAndSuspend(db, run, node);
+      if (res.node_key === node.node_key) {
+        const advanced = await advanceCurrentNodeKey(
+          db,
+          run.id,
+          run.current_node_key,
+          node.node_key,
+        );
+        if (!advanced) {
+          await logEvent(db, run.id, "error", node.node_key, {
+            reason: "lost_race_during_advance",
+          });
+        }
+        return { outcome: "advanced" };
+      } else {
+        // If it failed to fetch, it advances to failure branch
         currentKey = res.node_key;
         continue;
       }
@@ -1261,7 +1410,8 @@ async function handleReplyForActiveRun(
     message.kind === "interactive_reply" &&
     (currentNode.node_type === "send_buttons" ||
       currentNode.node_type === "send_list" ||
-      currentNode.node_type === "fetch_orders")
+      currentNode.node_type === "fetch_orders" ||
+      currentNode.node_type === "fetch_all_sr")
   ) {
     if (currentNode.node_type === "fetch_orders") {
       const cfg = currentNode.config as unknown as FetchOrdersNodeConfig;
@@ -1280,6 +1430,27 @@ async function handleReplyForActiveRun(
         await logEvent(db, run.id, "node_entered", currentNode.node_key, {
           captured_key: cfg.var_key,
           captured_invoice: message.reply_id,
+        });
+      } else {
+        matched = null;
+      }
+    } else if (currentNode.node_type === "fetch_all_sr") {
+      const cfg = currentNode.config as unknown as FetchAllSrNodeConfig;
+      matched = cfg.success_next;
+      const newVars = { ...run.vars, [cfg.var_key]: message.reply_id };
+      const { error: capErr } = await db
+        .from("flow_runs")
+        .update({
+          vars: newVars,
+          reprompt_count: 0,
+        })
+        .eq("id", run.id);
+      if (!capErr) {
+        run.vars = newVars;
+        run.reprompt_count = 0;
+        await logEvent(db, run.id, "node_entered", currentNode.node_key, {
+          captured_key: cfg.var_key,
+          captured_sr: message.reply_id,
         });
       } else {
         matched = null;
@@ -1368,6 +1539,8 @@ async function handleReplyForActiveRun(
       await sendListAndSuspend(db, run, currentNode, interpolationVars);
     } else if (currentNode.node_type === "fetch_orders") {
       await fetchOrdersAndSuspend(db, run, currentNode);
+    } else if (currentNode.node_type === "fetch_all_sr") {
+      await fetchAllSrAndSuspend(db, run, currentNode);
     } else if (currentNode.node_type === "collect_input") {
       // Customer typed something we couldn't accept (empty after trim,
       // or var_key missing — rare). Re-send the prompt so they try again.

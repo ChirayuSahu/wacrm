@@ -641,8 +641,10 @@ function AddNodeButton({ onAdd }: { onAdd: (type: NodeType) => void }) {
     "condition",
     "set_tag",
     "fetch_invoice",
-    "api_call",
     "fetch_orders",
+    "fetch_sr",
+    "fetch_all_sr",
+    "api_call",
     "handoff",
     "end",
   ];

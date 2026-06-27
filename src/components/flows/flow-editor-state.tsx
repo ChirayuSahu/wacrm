@@ -187,7 +187,11 @@ export function defaultConfigFor(type: NodeType): Record<string, unknown> {
     case "handoff":
       return { note: "" };
     case "fetch_invoice":
-      return { invoice_id: "", var_key: "invoice_status", success_next: "", failure_next: "" };
+      return { invoice_id: "", var_key: "", success_next: "", failure_next: "" };
+    case "fetch_sr":
+      return { sr_id: "", var_key: "", success_next: "", failure_next: "" };
+    case "fetch_all_sr":
+      return { phone_key: "", list_text: "Select a sales return:", button_label: "View Returns", var_key: "", success_next: "", failure_next: "" };
     case "api_call":
       return {
         url: "",
