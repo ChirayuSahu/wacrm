@@ -48,11 +48,11 @@ describe("resolveFallbackPolicy", () => {
     expect(resolveFallbackPolicy({ max_reprompts: 2.7 }).max_reprompts).toBe(2);
   });
 
-  it("rejects non-positive on_timeout_hours", () => {
-    expect(resolveFallbackPolicy({ on_timeout_hours: 0 })).toEqual(
+  it("rejects non-positive on_timeout_minutes", () => {
+    expect(resolveFallbackPolicy({ on_timeout_minutes: 0 })).toEqual(
       DEFAULT_FALLBACK_POLICY,
     );
-    expect(resolveFallbackPolicy({ on_timeout_hours: -5 })).toEqual(
+    expect(resolveFallbackPolicy({ on_timeout_minutes: -5 })).toEqual(
       DEFAULT_FALLBACK_POLICY,
     );
   });
@@ -61,7 +61,7 @@ describe("resolveFallbackPolicy", () => {
 const POLICY_REPROMPT_2_HANDOFF: FlowFallbackPolicy = {
   on_unknown_reply: "reprompt",
   max_reprompts: 2,
-  on_timeout_hours: 24,
+  on_timeout_minutes: 24 * 60,
   on_exhaust: "handoff",
 };
 

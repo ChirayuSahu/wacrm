@@ -36,6 +36,7 @@ import { supabaseAdmin } from "./admin-client";
 import {
   engineSendInteractiveButtons,
   engineSendInteractiveList,
+  engineSendInteractiveCtaUrl,
   engineSendMedia,
   engineSendText,
 } from "./meta-send";
@@ -51,6 +52,7 @@ import {
   type ParsedInbound,
   type SendButtonsNodeConfig,
   type SendListNodeConfig,
+  type SendCtaNodeConfig,
   type SendMediaNodeConfig,
   type SendMessageNodeConfig,
   type SetTagNodeConfig,
@@ -120,10 +122,13 @@ export function isAutoAdvancing(node_type: string): boolean {
     node_type === "start" ||
     node_type === "send_message" ||
     node_type === "send_media" ||
+    node_type === "send_cta" ||
     node_type === "condition" ||
     node_type === "set_tag" ||
     node_type === "fetch_invoice" ||
-    node_type === "api_call"
+    node_type === "api_call" ||
+    node_type === "fetch_orders" ||
+    node_type === "continue_flow"
   );
 }
 
@@ -393,6 +398,31 @@ async function sendButtonsAndSuspend(
     })
     .eq("id", run.id);
   return { outcome: "advanced", node_key: node.node_key };
+}
+
+async function sendCtaAndAdvance(
+  db: AdminClient,
+  run: FlowRunRow,
+  node: FlowNodeRow,
+  vars: Record<string, unknown>
+): Promise<{ outcome: "advanced"; node_key: string }> {
+  const cfg = node.config as unknown as SendCtaNodeConfig;
+  const { whatsapp_message_id } = await engineSendInteractiveCtaUrl({
+    accountId: run.account_id,
+    userId: run.user_id,
+    conversationId: run.conversation_id!,
+    contactId: run.contact_id!,
+    bodyText: interpolateVars(cfg.text ?? "", vars),
+    headerText: cfg.header_text ? interpolateVars(cfg.header_text, vars) : undefined,
+    footerText: cfg.footer_text ? interpolateVars(cfg.footer_text, vars) : undefined,
+    buttonLabel: interpolateVars(cfg.button_label ?? "", vars),
+    url: interpolateVars(cfg.url ?? "", vars),
+  });
+  await logEvent(db, run.id, "message_sent", node.node_key, {
+    node_type: "send_cta",
+    whatsapp_message_id,
+  });
+  return { outcome: "advanced", node_key: cfg.next_node_key };
 }
 
 async function sendListAndSuspend(
@@ -945,6 +975,11 @@ async function advanceFromNodeKey(
         });
       }
       currentKey = success ? cfg.success_next : cfg.failure_next;
+      continue;
+    }
+    if (node.node_type === "send_cta") {
+      const result = await sendCtaAndAdvance(db, run, node, interpolationVars);
+      currentKey = result.node_key;
       continue;
     }
     if (node.node_type === "send_buttons") {

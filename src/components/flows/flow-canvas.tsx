@@ -650,6 +650,7 @@ const ADD_NODE_TYPES: NodeType[] = [
   "start",
   "send_buttons",
   "send_list",
+  "send_cta",
   "send_message",
   "send_media",
   "collect_input",

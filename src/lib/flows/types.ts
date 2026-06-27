@@ -68,6 +68,16 @@ export interface SendListNodeConfig {
   }>;
 }
 
+export interface SendCtaNodeConfig {
+  text: string;
+  header_text?: string;
+  footer_text?: string;
+  button_label: string;
+  url: string;
+  /** Auto-advance target after the message lands at Meta. */
+  next_node_key: string;
+}
+
 /**
  * Sends a single image / video / document via WhatsApp, then
  * auto-advances. The media file is uploaded to the `flow-media`
@@ -220,6 +230,7 @@ export type FlowNodeConfig =
   | { node_type: "send_message"; config: SendMessageNodeConfig }
   | { node_type: "send_buttons"; config: SendButtonsNodeConfig }
   | { node_type: "send_list"; config: SendListNodeConfig }
+  | { node_type: "send_cta"; config: SendCtaNodeConfig }
   | { node_type: "send_media"; config: SendMediaNodeConfig }
   | { node_type: "collect_input"; config: CollectInputNodeConfig }
   | { node_type: "condition"; config: ConditionNodeConfig }

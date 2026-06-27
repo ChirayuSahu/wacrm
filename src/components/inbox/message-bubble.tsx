@@ -116,13 +116,47 @@ function MediaImage({ url, alt }: { url: string; alt: string }) {
   );
 }
 
+function LinkifiedText({
+  children,
+  className,
+}: {
+  children: string;
+  className?: string;
+}) {
+  if (!children) return null;
+
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  const parts = children.split(urlRegex);
+
+  return (
+    <p className={className}>
+      {parts.map((part, i) => {
+        if (part.match(urlRegex)) {
+          return (
+            <a
+              key={i}
+              href={part}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-2 hover:opacity-80"
+            >
+              {part}
+            </a>
+          );
+        }
+        return part;
+      })}
+    </p>
+  );
+}
+
 function MessageContent({ message }: { message: Message }) {
   switch (message.content_type) {
     case "text":
       return (
-        <p className="whitespace-pre-wrap break-words text-sm">
-          {message.content_text}
-        </p>
+        <LinkifiedText className="whitespace-pre-wrap break-words text-sm">
+          {message.content_text || ""}
+        </LinkifiedText>
       );
 
     case "image":
@@ -134,9 +168,9 @@ function MessageContent({ message }: { message: Message }) {
             <MediaUnavailable label="Image" />
           )}
           {message.content_text && (
-            <p className="mt-1 whitespace-pre-wrap break-words text-sm">
+            <LinkifiedText className="mt-1 whitespace-pre-wrap break-words text-sm">
               {message.content_text}
-            </p>
+            </LinkifiedText>
           )}
         </div>
       );
@@ -154,9 +188,9 @@ function MessageContent({ message }: { message: Message }) {
             <MediaUnavailable label="Video" />
           )}
           {message.content_text && (
-            <p className="mt-1 whitespace-pre-wrap break-words text-sm">
+            <LinkifiedText className="mt-1 whitespace-pre-wrap break-words text-sm">
               {message.content_text}
-            </p>
+            </LinkifiedText>
           )}
         </div>
       );
@@ -198,9 +232,9 @@ function MessageContent({ message }: { message: Message }) {
             Template
           </span>
           {message.content_text && (
-            <p className="mt-1 whitespace-pre-wrap break-words text-sm">
+            <LinkifiedText className="mt-1 whitespace-pre-wrap break-words text-sm">
               {message.content_text}
-            </p>
+            </LinkifiedText>
           )}
         </div>
       );
@@ -225,18 +259,18 @@ function MessageContent({ message }: { message: Message }) {
             <CornerDownLeft className="h-3 w-3" />
             Button reply
           </span>
-          <p className="whitespace-pre-wrap break-words text-sm">
+          <LinkifiedText className="whitespace-pre-wrap break-words text-sm">
             {message.content_text || "[Interactive reply]"}
-          </p>
+          </LinkifiedText>
         </div>
       );
     }
 
     default:
       return (
-        <p className="whitespace-pre-wrap break-words text-sm">
+        <LinkifiedText className="whitespace-pre-wrap break-words text-sm">
           {message.content_text || "[Unsupported message type]"}
-        </p>
+        </LinkifiedText>
       );
   }
 }

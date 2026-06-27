@@ -242,6 +242,46 @@ function validateNode(
       break;
     }
 
+    case "send_cta": {
+      const cfg = node.config as { text?: string; button_label?: string; url?: string; next_node_key?: string };
+      if (!cfg.text?.trim() && !cfg.button_label?.trim()) {
+        issues.push({
+          severity: "error",
+          scope: "node",
+          node_key: node.node_key,
+          field: "text",
+          message: "URL Button node needs a text body or button label.",
+        });
+      }
+      if (!cfg.url?.trim()) {
+        issues.push({
+          severity: "error",
+          scope: "node",
+          node_key: node.node_key,
+          field: "url",
+          message: "URL Button node must have a valid URL.",
+        });
+      }
+      if (!cfg.next_node_key) {
+        issues.push({
+          severity: "error",
+          scope: "node",
+          node_key: node.node_key,
+          field: "next_node_key",
+          message: "URL Button node must point to a next node.",
+        });
+      } else if (!knownKeys.has(cfg.next_node_key)) {
+        issues.push({
+          severity: "error",
+          scope: "node",
+          node_key: node.node_key,
+          field: "next_node_key",
+          message: `URL Button points to non-existent node "${cfg.next_node_key}".`,
+        });
+      }
+      break;
+    }
+
     case "send_media": {
       const cfg = node.config as {
         media_type?: "image" | "video" | "document";
@@ -897,6 +937,7 @@ function outgoingEdges(node: NodeInput): string[] {
   switch (node.node_type) {
     case "start":
     case "send_message":
+    case "send_cta":
     case "send_media":
     case "collect_input":
     case "set_tag": {

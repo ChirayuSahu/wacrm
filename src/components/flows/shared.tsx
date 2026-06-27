@@ -31,6 +31,7 @@ import {
   Webhook,
   Workflow,
   FastForward,
+  ExternalLink,
 } from "lucide-react";
 
 // ============================================================
@@ -46,6 +47,7 @@ export type NodeType =
   | "send_message"
   | "send_buttons"
   | "send_list"
+  | "send_cta"
   | "send_media"
   | "collect_input"
   | "condition"
@@ -91,6 +93,11 @@ export const NODE_META: Record<
     label: "Send list",
     icon: ListPlus,
     color: "text-indigo-400",
+  },
+  send_cta: {
+    label: "URL Button",
+    icon: ExternalLink,
+    color: "text-blue-400",
   },
   send_media: {
     label: "Send media",
@@ -213,6 +220,14 @@ export function summarizeNode(node: BuilderNode): string | null {
       return rowCount > 0
         ? `${rowCount} option${rowCount === 1 ? "" : "s"} across ${sections.length} section${sections.length === 1 ? "" : "s"}`
         : null;
+    }
+    case "send_cta": {
+      const text = typeof cfg.text === "string" ? cfg.text : "";
+      const buttonLabel = typeof cfg.button_label === "string" ? cfg.button_label : "";
+      if (text.length > 0) {
+        return buttonLabel ? `${truncate(text, 40)} · [${truncate(buttonLabel, 20)}]` : truncate(text);
+      }
+      return buttonLabel ? `[${truncate(buttonLabel, 30)}]` : null;
     }
     case "send_media": {
       const mediaType =

@@ -104,6 +104,17 @@ export function NodeConfigForm({
         />
       );
 
+    case "send_cta":
+      return (
+        <SendCtaForm
+          cfg={cfg as SendCtaCfg}
+          allNodes={allNodes}
+          currentKey={node.node_key}
+          onUpdateConfig={onUpdateConfig}
+          showAdvanced={showAdvanced}
+        />
+      );
+
     case "send_list":
       return (
         <SendListForm
@@ -1387,6 +1398,101 @@ function ContinueFlowForm({
         When the run hits this node, it will instantly finish and launch the
         selected flow.
       </p>
+    </div>
+  );
+}
+
+// ============================================================
+// send_cta
+// ============================================================
+
+interface SendCtaCfg {
+  text?: string;
+  header_text?: string;
+  footer_text?: string;
+  button_label?: string;
+  url?: string;
+  next_node_key?: string;
+}
+
+function SendCtaForm({
+  cfg,
+  allNodes,
+  currentKey,
+  onUpdateConfig,
+  showAdvanced,
+}: {
+  cfg: SendCtaCfg;
+  allNodes: BuilderNode[];
+  currentKey: string;
+  onUpdateConfig: (patch: Partial<SendCtaCfg>) => void;
+  showAdvanced: boolean;
+}) {
+  return (
+    <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-3">
+        <TextRow
+          label="Text sent to the customer"
+          value={cfg.text ?? ""}
+          onChange={(v) => onUpdateConfig({ text: v })}
+        />
+
+        {showAdvanced && (
+          <div className="flex flex-col gap-3 rounded-md border border-border p-3">
+            <h4 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Optional Elements
+            </h4>
+            <TextRow
+              label="Header text"
+              value={cfg.header_text ?? ""}
+              onChange={(v) => onUpdateConfig({ header_text: v })}
+              rows={1}
+            />
+            <TextRow
+              label="Footer text"
+              value={cfg.footer_text ?? ""}
+              onChange={(v) => onUpdateConfig({ footer_text: v })}
+              rows={1}
+            />
+          </div>
+        )}
+
+        <div className="flex flex-col gap-3 rounded-md border border-border p-3">
+          <h4 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            URL Button
+          </h4>
+          <div>
+            <label className="mb-1 block text-xs text-muted-foreground">
+              Button label (≤20 chars)
+            </label>
+            <Input
+              value={cfg.button_label ?? ""}
+              onChange={(e) => onUpdateConfig({ button_label: e.target.value })}
+              placeholder="e.g. Visit Website"
+              className="bg-muted text-xs"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs text-muted-foreground">
+              URL
+            </label>
+            <Input
+              value={cfg.url ?? ""}
+              onChange={(e) => onUpdateConfig({ url: e.target.value })}
+              placeholder="https://..."
+              className="bg-muted text-xs"
+            />
+          </div>
+        </div>
+
+        <NextNodeRow
+          value={cfg.next_node_key ?? ""}
+          allNodes={allNodes}
+          currentKey={currentKey}
+          onChange={(v) => onUpdateConfig({ next_node_key: v })}
+          label="Advances to"
+        />
+      </div>
     </div>
   );
 }
