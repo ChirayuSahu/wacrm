@@ -1027,9 +1027,10 @@ async function advanceFromNodeKey(
           
         const contactPhone = (contactData as { phone?: string } | null)?.phone;
         const cleanContactPhone = contactPhone?.replace(/[^0-9]/g, "").slice(-10);
+        const numericSrId = srId.replace(/[^0-9]/g, "");
         
-        if (cleanContactPhone) {
-          const data = await fetchBackend(`/wa/sr-details/${srId}?phone=${cleanContactPhone}`);
+        if (cleanContactPhone && numericSrId) {
+          const data = await fetchBackend(`/wa/sr-details/${numericSrId}?phone=${cleanContactPhone}`);
           console.log("[fetch_sr] response data:", data);
           
           if (data.success && data.data) {
