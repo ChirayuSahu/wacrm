@@ -577,6 +577,7 @@ async function fetchAllSrAndSuspend(
 
   try {
      const data = await fetchBackend(`/wa/sr/${phone}`);
+     console.log("[fetch_all_sr] response data:", data);
      
      if (data.success && Array.isArray(data.data) && data.data.length > 0) {
         const rows = data.data.slice(0, 10).map((s: any) => ({
@@ -1025,6 +1026,7 @@ async function advanceFromNodeKey(
         
         if (cleanContactPhone) {
           const data = await fetchBackend(`/wa/sr-details/${srId}?phone=${cleanContactPhone}`);
+          console.log("[fetch_sr] response data:", data);
           
           if (data.success && data.data) {
              phoneMatch = true;
