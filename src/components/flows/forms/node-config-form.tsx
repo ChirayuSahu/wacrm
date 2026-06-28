@@ -1197,48 +1197,46 @@ function SendMediaForm({
 
       <div>
         <label className="mb-1 block text-xs text-muted-foreground">File</label>
-        {cfg.media_url ? (
-          <div className="flex items-center gap-2 rounded-md border border-border bg-muted px-3 py-2 text-xs">
-            <Paperclip className="h-3.5 w-3.5 shrink-0 text-cyan-400" />
-            <a
-              href={cfg.media_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="min-w-0 flex-1 truncate text-foreground hover:text-cyan-300"
-              title={displayName || cfg.media_url}
-            >
-              {displayName || cfg.media_url}
-            </a>
-            <button
-              type="button"
-              onClick={handleClear}
-              className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-              aria-label="Remove file"
-              disabled={uploading}
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        ) : (
+        <div className="flex gap-2">
+          <Input
+            value={cfg.media_url ?? ""}
+            onChange={(e) => {
+              const url = e.target.value;
+              const newCfg: Partial<SendMediaCfg> = { media_url: url };
+              // If there's no filename set, try to extract one from the URL if it's a document
+              if (isDocument && !cfg.filename && url) {
+                try {
+                  const parsed = new URL(url);
+                  const name = parsed.pathname.split("/").pop();
+                  if (name) newCfg.filename = name;
+                } catch {
+                  // Ignore invalid URLs
+                }
+              }
+              onUpdateConfig(newCfg);
+            }}
+            placeholder="https://..."
+            className="bg-muted text-xs flex-1"
+          />
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
-            className="flex w-full items-center justify-center gap-2 rounded-md border border-dashed border-border bg-card px-3 py-4 text-xs text-muted-foreground transition-colors hover:border-border hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
+            className="flex shrink-0 items-center justify-center gap-1.5 rounded-md border border-border bg-card px-3 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
           >
             {uploading ? (
               <>
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                Uploading…
+                Wait...
               </>
             ) : (
               <>
                 <Upload className="h-3.5 w-3.5" />
-                Click to upload (max 16 MB)
+                Upload
               </>
             )}
           </button>
-        )}
+        </div>
         <input
           ref={fileInputRef}
           type="file"
