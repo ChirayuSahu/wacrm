@@ -996,6 +996,10 @@ async function advanceFromNodeKey(
                run.vars[`${cfg.var_key}_amount`] = data.data.amount;
                interpolationVars[`${cfg.var_key}_amount`] = data.data.amount;
              }
+             if (data.data.podUrl) {
+               run.vars[`${cfg.var_key}_podUrl`] = data.data.podUrl;
+               interpolationVars[`${cfg.var_key}_podUrl`] = data.data.podUrl;
+             }
              
              // Update vars in DB
              await db.from("flow_runs").update({ vars: run.vars }).eq("id", run.id);
