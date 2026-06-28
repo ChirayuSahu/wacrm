@@ -243,6 +243,7 @@ export function NodeConfigForm({
                     <li><code>{`{{vars.${base}_deliveryMan}}`}</code></li>
                     <li><code>{`{{vars.${base}_items}}`}</code></li>
                     <li><code>{`{{vars.${base}_amount}}`}</code></li>
+                    <li><code>{`{{vars.${base}_podUrl}}`}</code></li>
                   </ul>
                 </div>
               );
