@@ -827,11 +827,13 @@ async function advanceFromNodeKey(
           conversationId: run.conversation_id!,
           contactId: run.contact_id!,
           kind: cfg.media_type,
-          link: cfg.media_url,
+          link: interpolateVars(cfg.media_url, interpolationVars),
           caption: cfg.caption
             ? interpolateVars(cfg.caption, interpolationVars)
             : undefined,
-          filename: cfg.filename,
+          filename: cfg.filename 
+            ? interpolateVars(cfg.filename, interpolationVars)
+            : undefined,
         });
         await logEvent(db, run.id, "message_sent", node.node_key, {
           node_type: "send_media",
