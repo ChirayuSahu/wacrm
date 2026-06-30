@@ -1052,6 +1052,189 @@ function validateInteractiveHeaderFooter(
 }
 
 // ============================================================
+// Payments (Order Details & Status)
+// ============================================================
+
+export interface SendInteractiveOrderDetailsArgs {
+  phoneNumberId: string
+  accessToken: string
+  to: string
+  bodyText: string
+  footerText?: string
+  referenceId: string
+  amount: number
+  currency?: string
+  vpa: string
+  payeeName: string
+  description: string
+  contextMessageId?: string
+}
+
+export async function sendInteractiveOrderDetails(
+  args: SendInteractiveOrderDetailsArgs
+): Promise<MetaSendResult> {
+  const {
+    phoneNumberId, accessToken, to,
+    bodyText, footerText, referenceId,
+    amount, currency = 'INR', vpa, payeeName, description, contextMessageId
+  } = args
+
+  validateInteractiveBody(bodyText)
+  validateInteractiveHeaderFooter(undefined, footerText)
+
+  // Meta expects total amount in paise/cents (offset 100)
+  const value = Math.round(amount * 100)
+
+  // Construct UPI Intent Link per Meta specifications
+  const upiParams = new URLSearchParams()
+  upiParams.append('pa', vpa)
+  upiParams.append('pn', payeeName)
+  upiParams.append('am', amount.toString())
+  upiParams.append('cu', currency)
+  upiParams.append('tn', description)
+  upiParams.append('tr', referenceId)
+  
+  const upiIntentLink = `upi://pay?${upiParams.toString()}`
+
+  const interactive: Record<string, unknown> = {
+    type: 'order_details',
+    body: { text: bodyText },
+    ...(footerText ? { footer: { text: footerText } } : {}),
+    action: {
+      name: 'review_and_pay',
+      parameters: {
+        reference_id: referenceId,
+        type: 'digital-goods',
+        currency,
+        total_amount: {
+          value,
+          offset: 100
+        },
+        payment_settings: [
+          {
+            type: 'upi_intent_link',
+            upi_intent_link: {
+              link: upiIntentLink
+            }
+          }
+        ],
+        order: {
+          status: 'pending',
+          items: [
+            {
+              name: description.slice(0, 60) || 'Payment Request',
+              amount: {
+                value,
+                offset: 100
+              },
+              quantity: 1,
+              country_of_origin: 'IN',
+              importer_name: payeeName,
+              importer_address: {
+                address_line1: 'India',
+                city: 'New Delhi',
+                zone_code: 'DL',
+                postal_code: '110001',
+                country_code: 'IN'
+              }
+            }
+          ],
+          subtotal: {
+            value,
+            offset: 100
+          }
+        }
+      }
+    }
+  }
+
+  const body: Record<string, unknown> = {
+    messaging_product: 'whatsapp',
+    recipient_type: 'individual',
+    to,
+    type: 'interactive',
+    interactive,
+  }
+  if (contextMessageId) body.context = { message_id: contextMessageId }
+
+  const url = `${META_API_BASE}/${phoneNumberId}/messages`
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(body),
+  })
+  if (!response.ok) {
+    await throwMetaError(response, `Meta API error: ${response.status}`)
+  }
+  const data = await response.json()
+  return { messageId: data.messages[0].id }
+}
+
+export interface SendInteractiveOrderStatusArgs {
+  phoneNumberId: string
+  accessToken: string
+  to: string
+  bodyText: string
+  referenceId: string
+  status: 'processing' | 'partially_shipped' | 'shipped' | 'completed' | 'canceled'
+  description?: string
+  contextMessageId?: string
+}
+
+export async function sendInteractiveOrderStatus(
+  args: SendInteractiveOrderStatusArgs
+): Promise<MetaSendResult> {
+  const {
+    phoneNumberId, accessToken, to,
+    bodyText, referenceId, status, description, contextMessageId
+  } = args
+
+  validateInteractiveBody(bodyText)
+
+  const interactive: Record<string, unknown> = {
+    type: 'order_status',
+    body: { text: bodyText },
+    action: {
+      name: 'review_order',
+      parameters: {
+        reference_id: referenceId,
+        order: {
+          status,
+          ...(description ? { description: description.slice(0, 120) } : {})
+        }
+      }
+    }
+  }
+
+  const body: Record<string, unknown> = {
+    messaging_product: 'whatsapp',
+    recipient_type: 'individual',
+    to,
+    type: 'interactive',
+    interactive,
+  }
+  if (contextMessageId) body.context = { message_id: contextMessageId }
+
+  const url = `${META_API_BASE}/${phoneNumberId}/messages`
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(body),
+  })
+  if (!response.ok) {
+    await throwMetaError(response, `Meta API error: ${response.status}`)
+  }
+  const data = await response.json()
+  return { messageId: data.messages[0].id }
+}
+
+// ============================================================
 // Media
 // ============================================================
 

@@ -13,6 +13,7 @@ import {
   LayoutTemplate,
   ImageOff,
   CornerDownLeft,
+  Banknote,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ReplyQuote } from "./reply-quote";
@@ -253,6 +254,30 @@ function MessageContent({ message }: { message: Message }) {
       // set by parseMessageContent in the webhook) with a small affordance
       // so agents reading the inbox can tell at a glance that this is a
       // tap rather than the customer typing the same words.
+      
+      const isPaymentRequest = message.sender_type === "bot" && message.content_text?.startsWith("Payment Request:");
+      
+      if (isPaymentRequest) {
+        const text = message.content_text || "";
+        const refMatch = text.match(/Ref:\s*(PAY-[^\n]+)/);
+        const refId = refMatch ? refMatch[1] : null;
+
+        return (
+          <div className="flex flex-col gap-2 min-w-[200px]">
+            <span className="inline-flex items-center gap-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+              <Banknote className="h-3 w-3" />
+              Payment Request
+            </span>
+            <LinkifiedText className="whitespace-pre-wrap break-words text-sm font-medium">
+              {text.replace(/Ref:\s*PAY-[^\n]+/, "").trim()}
+            </LinkifiedText>
+            {refId && (
+              <PaymentRequestActions referenceId={refId} />
+            )}
+          </div>
+        );
+      }
+
       return (
         <div className="flex flex-col gap-0.5">
           <span className="inline-flex items-center gap-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
@@ -273,6 +298,54 @@ function MessageContent({ message }: { message: Message }) {
         </LinkifiedText>
       );
   }
+}
+
+function PaymentRequestActions({ referenceId }: { referenceId: string }) {
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState(false);
+
+  async function handleMarkPaid() {
+    try {
+      setLoading(true);
+      setError(false);
+      const res = await fetch("/api/whatsapp/payments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ referenceId, action: "mark_paid" })
+      });
+      if (!res.ok) {
+        throw new Error("Failed to mark as paid");
+      }
+      setSuccess(true);
+    } catch {
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (success) {
+    return (
+      <div className="mt-2 flex items-center gap-1 text-xs font-medium text-emerald-400">
+        <CheckCheck className="h-4 w-4" />
+        Paid
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-2 flex flex-col gap-1">
+      <button
+        onClick={handleMarkPaid}
+        disabled={loading}
+        className="rounded bg-primary-foreground/10 px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary-foreground/20 disabled:opacity-50"
+      >
+        {loading ? "Updating..." : "Mark as Paid"}
+      </button>
+      {error && <span className="text-[10px] text-red-300">Failed to update status</span>}
+    </div>
+  );
 }
 
 export function MessageBubble({

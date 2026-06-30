@@ -39,6 +39,7 @@ import {
   engineSendInteractiveCtaUrl,
   engineSendMedia,
   engineSendText,
+  engineSendInteractiveOrderDetails,
 } from "./meta-send";
 import { decideFallback, resolveFallbackPolicy } from "./fallback";
 import {
@@ -64,6 +65,7 @@ import {
   type FetchSrNodeConfig,
   type FetchAllSrNodeConfig,
   type ContinueFlowNodeConfig,
+  type SendPaymentRequestNodeConfig,
 } from "./types";
 import { fetchBackend } from "../backend-client";
 
@@ -132,7 +134,8 @@ export function isAutoAdvancing(node_type: string): boolean {
     node_type === "fetch_orders" ||
     node_type === "fetch_sr" ||
     node_type === "fetch_all_sr" ||
-    node_type === "continue_flow"
+    node_type === "continue_flow" ||
+    node_type === "send_payment_request"
   );
 }
 
@@ -472,6 +475,58 @@ async function sendListAndSuspend(
   return { outcome: "advanced", node_key: node.node_key };
 }
 
+async function sendPaymentRequestAndAdvance(
+  db: AdminClient,
+  run: FlowRunRow,
+  node: FlowNodeRow,
+  vars: Record<string, unknown>
+): Promise<{ outcome: "advanced"; node_key: string }> {
+  const cfg = node.config as unknown as SendPaymentRequestNodeConfig;
+  
+  const vpa = interpolateVars(cfg.vpa ?? "", vars);
+  const amountStr = interpolateVars(cfg.amount ?? "", vars);
+  const amount = parseFloat(amountStr) || 0;
+  const remark = interpolateVars(cfg.remark ?? "", vars);
+  
+  const referenceId = `PAY-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
+  // Save the request in the db
+  if (run.contact_id) {
+    await db.from("payment_requests").insert({
+      account_id: run.account_id,
+      contact_id: run.contact_id,
+      reference_id: referenceId,
+      amount,
+      currency: 'INR',
+      status: 'PENDING',
+      description: remark
+    });
+  }
+
+  const { whatsapp_message_id } = await engineSendInteractiveOrderDetails({
+    accountId: run.account_id,
+    userId: run.user_id,
+    conversationId: run.conversation_id!,
+    contactId: run.contact_id!,
+    bodyText: `Payment Request: ${remark}\nRef: ${referenceId}`,
+    referenceId,
+    amount,
+    currency: 'INR',
+    vpa,
+    payeeName: 'Merchant', // Can also be parameterized or fetched from settings
+    description: remark
+  });
+
+  await logEvent(db, run.id, "message_sent", node.node_key, {
+    node_type: "send_payment_request",
+    whatsapp_message_id,
+    reference_id: referenceId,
+    amount
+  });
+  
+  return { outcome: "advanced", node_key: cfg.next_node_key };
+}
+
 async function fetchOrdersAndSuspend(
   db: AdminClient,
   run: FlowRunRow,
@@ -798,7 +853,7 @@ async function advanceFromNodeKey(
       try {
         const { whatsapp_message_id } = await engineSendText({
           accountId: run.account_id,
-    userId: run.user_id,
+          userId: run.user_id,
           conversationId: run.conversation_id!,
           contactId: run.contact_id!,
           text: interpolateVars(cfg.text, interpolationVars),
@@ -823,7 +878,7 @@ async function advanceFromNodeKey(
       try {
         const { whatsapp_message_id } = await engineSendMedia({
           accountId: run.account_id,
-    userId: run.user_id,
+          userId: run.user_id,
           conversationId: run.conversation_id!,
           contactId: run.contact_id!,
           kind: cfg.media_type,
@@ -850,6 +905,25 @@ async function advanceFromNodeKey(
       }
       currentKey = cfg.next_node_key;
       continue;
+    }
+    if (node.node_type === "send_payment_request") {
+      try {
+        const { node_key } = await sendPaymentRequestAndAdvance(
+          db,
+          run,
+          node,
+          interpolationVars,
+        );
+        currentKey = node_key;
+        continue;
+      } catch (err) {
+        await logEvent(db, run.id, "error", currentKey, {
+          reason: "send_payment_request_failed",
+          detail: err instanceof Error ? err.message : String(err),
+        });
+        await endRun(db, run.id, "failed", "meta_api_error");
+        return { outcome: "completed" };
+      }
     }
     if (node.node_type === "collect_input") {
       // Send the prompt and suspend. Customer's next TEXT reply will

@@ -534,3 +534,100 @@ export async function engineSendInteractiveCtaUrl(
   return { whatsapp_message_id: waMessageId }
 }
 
+export interface SendInteractiveOrderDetailsEngineArgs {
+  accountId: string
+  userId: string
+  conversationId: string
+  contactId: string
+  bodyText: string
+  referenceId: string
+  amount: number
+  currency?: string
+  vpa: string
+  payeeName: string
+  description: string
+}
+
+export async function engineSendInteractiveOrderDetails(
+  args: SendInteractiveOrderDetailsEngineArgs,
+): Promise<{ whatsapp_message_id: string }> {
+  const db = supabaseAdmin()
+  const { data: config } = await db
+    .from('whatsapp_config')
+    .select('phone_number_id, access_token')
+    .eq('account_id', args.accountId)
+    .single()
+  if (!config) throw new Error(`no whatsapp_config for account ${args.accountId}`)
+  const accessToken = decrypt(config.access_token)
+
+  const { data: contact } = await db
+    .from('contacts')
+    .select('id, phone')
+    .eq('id', args.contactId)
+    .single()
+  if (!contact) throw new Error(`contact ${args.contactId} not found`)
+
+  const sanitized = contact.phone.replace(/\D/g, '')
+
+  const attempt = async (phone: string): Promise<string> => {
+    const r = await import('../whatsapp/meta-api').then((m) => m.sendInteractiveOrderDetails({
+      phoneNumberId: config.phone_number_id,
+      accessToken,
+      to: phone,
+      bodyText: args.bodyText,
+      referenceId: args.referenceId,
+      amount: args.amount,
+      currency: args.currency,
+      vpa: args.vpa,
+      payeeName: args.payeeName,
+      description: args.description,
+    }))
+    return r.messageId
+  }
+
+  const variants = phoneVariants(sanitized)
+  let workingPhone = sanitized
+  let waMessageId = ''
+  let lastError: unknown = null
+  for (const v of variants) {
+    try {
+      waMessageId = await attempt(v)
+      workingPhone = v
+      lastError = null
+      break
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      if (!isRecipientNotAllowedError(msg)) throw err
+      lastError = err
+    }
+  }
+  if (lastError) throw lastError
+
+  if (workingPhone !== sanitized) {
+    await db.from('contacts').update({ phone: workingPhone }).eq('id', contact.id)
+  }
+
+  const preview = args.bodyText.length > 100 ? args.bodyText.slice(0, 99) + '…' : args.bodyText
+  const { error: msgErr } = await db.from('messages').insert({
+    conversation_id: args.conversationId,
+    sender_type: 'bot',
+    content_type: 'interactive',
+    content_text: preview,
+    message_id: waMessageId,
+    status: 'sent',
+  })
+  if (msgErr) {
+    throw new Error(`sent to Meta but DB insert failed: ${msgErr.message}`)
+  }
+
+  await db
+    .from('conversations')
+    .update({
+      last_message_text: preview,
+      last_message_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', args.conversationId)
+
+  return { whatsapp_message_id: waMessageId }
+}

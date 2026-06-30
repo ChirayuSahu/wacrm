@@ -229,6 +229,18 @@ export interface FetchAllSrNodeConfig {
 }
 
 
+export interface SendPaymentRequestNodeConfig {
+  /** The VPA to receive the money (e.g. chirayusahu@upi) */
+  vpa: string;
+  /** Amount to request (e.g. {{vars.amount}} or 100) */
+  amount: string;
+  /** Remark / Description */
+  remark: string;
+  
+  /** Node to advance to after the request is sent */
+  next_node_key: string;
+}
+
 export interface ContinueFlowNodeConfig {
   /** Target flow_id to start after the current flow completes. */
   target_flow_id: string;
@@ -259,7 +271,8 @@ export type FlowNodeConfig =
   | { node_type: "fetch_sr"; config: FetchSrNodeConfig }
   | { node_type: "fetch_all_sr"; config: FetchAllSrNodeConfig }
   | { node_type: "end"; config: EndNodeConfig }
-  | { node_type: "continue_flow"; config: ContinueFlowNodeConfig };
+  | { node_type: "continue_flow"; config: ContinueFlowNodeConfig }
+  | { node_type: "send_payment_request"; config: SendPaymentRequestNodeConfig };
 
 export type FlowNodeType = FlowNodeConfig["node_type"];
 
