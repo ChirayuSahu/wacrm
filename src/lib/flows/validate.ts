@@ -977,6 +977,50 @@ function validateNode(
       // beyond their existence.
       break;
 
+    case "send_payment_request": {
+      const cfg = node.config as {
+        vpa?: string;
+        amount?: string;
+        next_node_key?: string;
+      };
+      if (!cfg.vpa?.trim()) {
+        issues.push({
+          severity: "error",
+          scope: "node",
+          node_key: node.node_key,
+          field: "vpa",
+          message: "Request Payment node needs a VPA/UPI ID.",
+        });
+      }
+      if (!cfg.amount?.trim()) {
+        issues.push({
+          severity: "error",
+          scope: "node",
+          node_key: node.node_key,
+          field: "amount",
+          message: "Request Payment node needs an amount.",
+        });
+      }
+      if (!cfg.next_node_key) {
+        issues.push({
+          severity: "error",
+          scope: "node",
+          node_key: node.node_key,
+          field: "next_node_key",
+          message: "Request Payment node must point to a next node.",
+        });
+      } else if (!knownKeys.has(cfg.next_node_key)) {
+        issues.push({
+          severity: "error",
+          scope: "node",
+          node_key: node.node_key,
+          field: "next_node_key",
+          message: `Request Payment points to non-existent node "${cfg.next_node_key}".`,
+        });
+      }
+      break;
+    }
+
     case "continue_flow": {
       const cfg = node.config as { target_flow_id?: string };
       if (!cfg.target_flow_id?.trim()) {
@@ -1035,6 +1079,7 @@ function outgoingEdges(node: NodeInput): string[] {
     case "send_message":
     case "send_cta":
     case "send_media":
+    case "send_payment_request":
     case "collect_input":
     case "set_tag": {
       const cfg = node.config as { next_node_key?: string };
