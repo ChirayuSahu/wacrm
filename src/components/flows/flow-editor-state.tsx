@@ -213,6 +213,8 @@ export function defaultConfigFor(type: NodeType): Record<string, unknown> {
       };
     case "continue_flow":
       return { target_flow_id: "" };
+    case "send_payment_request":
+      return { vpa: "", amount: "", remark: "Order Payment", next_node_key: "" };
     case "end":
       return {};
   }

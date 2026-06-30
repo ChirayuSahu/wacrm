@@ -437,6 +437,16 @@ export function NodeConfigForm({
         />
       );
 
+    case "send_payment_request":
+      return (
+        <SendPaymentRequestForm
+          cfg={cfg as SendPaymentRequestCfg}
+          allNodes={allNodes}
+          currentKey={node.node_key}
+          onUpdateConfig={onUpdateConfig}
+        />
+      );
+
     case "end":
       return (
         <p className="text-xs text-muted-foreground">
@@ -1597,5 +1607,55 @@ function SendCtaForm({
         />
       </div>
     </div>
+  );
+}
+
+// ============================================================
+// send_payment_request
+// ============================================================
+
+interface SendPaymentRequestCfg {
+  vpa?: string;
+  amount?: string;
+  remark?: string;
+  next_node_key?: string;
+}
+
+function SendPaymentRequestForm({
+  cfg,
+  allNodes,
+  currentKey,
+  onUpdateConfig,
+}: {
+  cfg: SendPaymentRequestCfg;
+  allNodes: BuilderNode[];
+  currentKey: string;
+  onUpdateConfig: (patch: Partial<SendPaymentRequestCfg>) => void;
+}) {
+  return (
+    <>
+      <TextRow
+        label="VPA / UPI ID (e.g. merchant@upi)"
+        value={cfg.vpa ?? ""}
+        onChange={(v) => onUpdateConfig({ vpa: v })}
+      />
+      <TextRow
+        label="Amount (supports {{vars.key}})"
+        value={cfg.amount ?? ""}
+        onChange={(v) => onUpdateConfig({ amount: v })}
+      />
+      <TextRow
+        label="Remark / Note"
+        value={cfg.remark ?? "Order Payment"}
+        onChange={(v) => onUpdateConfig({ remark: v })}
+      />
+      <NextNodeRow
+        value={cfg.next_node_key ?? ""}
+        allNodes={allNodes}
+        currentKey={currentKey}
+        onChange={(v) => onUpdateConfig({ next_node_key: v })}
+        label="Advances to"
+      />
+    </>
   );
 }

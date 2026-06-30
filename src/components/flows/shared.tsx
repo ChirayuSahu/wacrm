@@ -60,7 +60,8 @@ export type NodeType =
   | "fetch_sr"
   | "fetch_all_sr"
   | "end"
-  | "continue_flow";
+  | "continue_flow"
+  | "send_payment_request";
 
 export interface BuilderNode {
   node_key: string;
@@ -159,6 +160,12 @@ export const NODE_META: Record<
     label: "Continue Flow",
     icon: FastForward,
     color: "text-green-500",
+  },
+  send_payment_request: {
+    label: "Request Payment",
+    icon: Receipt,
+    color: "text-emerald-500",
+    description: "Send a UPI intent payment request card"
   },
   end: { label: "End", icon: Flag, color: "text-muted-foreground" },
 };
@@ -334,6 +341,11 @@ export function summarizeNode(node: BuilderNode): string | null {
     case "continue_flow": {
       const target = typeof cfg.target_flow_id === "string" ? cfg.target_flow_id : "";
       return target ? `Jump to flow` : "Target flow not selected";
+    }
+    case "send_payment_request": {
+      const vpa = typeof cfg.vpa === "string" ? cfg.vpa : "";
+      const amount = typeof cfg.amount === "string" ? cfg.amount : "";
+      return vpa && amount ? `Request ${amount} to ${vpa}` : "Request Payment";
     }
   }
 }
