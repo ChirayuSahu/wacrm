@@ -66,6 +66,7 @@ import {
   type FetchAllSrNodeConfig,
   type ContinueFlowNodeConfig,
   type SendPaymentRequestNodeConfig,
+  type FetchBreakageNodeConfig,
 } from "./types";
 import { fetchBackend } from "../backend-client";
 
@@ -134,6 +135,7 @@ export function isAutoAdvancing(node_type: string): boolean {
     node_type === "fetch_orders" ||
     node_type === "fetch_sr" ||
     node_type === "fetch_all_sr" ||
+    node_type === "fetch_breakage" ||
     node_type === "continue_flow" ||
     node_type === "send_payment_request"
   );
@@ -622,14 +624,14 @@ async function fetchAllSrAndSuspend(
       .maybeSingle();
     phone = (contactData as { phone?: string } | null)?.phone || "";
   } else {
-    phone = String(run.vars[cfg.phone_key] || "");
+    phone = String(run.vars[cfg.phone_key || ""] || "");
   }
 
   phone = phone.replace(/[^0-9]/g, "");
   if (phone.length > 10) phone = phone.slice(-10);
 
   if (!phone) {
-     return { outcome: "advanced", node_key: cfg.failure_next };
+     return { outcome: "advanced", node_key: cfg.failure_next || "" };
   }
 
   try {
@@ -673,14 +675,95 @@ async function fetchAllSrAndSuspend(
           
         return { outcome: "advanced", node_key: node.node_key }; 
      } else {
-        return { outcome: "advanced", node_key: cfg.failure_next };
+        return { outcome: "advanced", node_key: cfg.failure_next || "" };
      }
   } catch (err) {
      await logEvent(db, run.id, "error", node.node_key, {
        reason: "fetch_all_sr_failed",
        detail: err instanceof Error ? err.message : String(err),
      });
-     return { outcome: "advanced", node_key: cfg.failure_next };
+     return { outcome: "advanced", node_key: cfg.failure_next || "" };
+  }
+}
+
+
+async function fetchBreakageAndSuspend(
+  db: AdminClient,
+  run: FlowRunRow,
+  node: FlowNodeRow,
+): Promise<{ outcome: "advanced" | "failed"; node_key: string }> {
+  const cfg = node.config as unknown as FetchBreakageNodeConfig;
+  
+  console.log(`[fetch_breakage] node entered. phone_key config:`, cfg.phone_key);
+  
+  let phone = "";
+  if (cfg.phone_key === "contact.phone") {
+    const { data: contactData } = await db
+      .from("contacts")
+      .select("phone")
+      .eq("id", run.contact_id!)
+      .maybeSingle();
+    phone = (contactData as { phone?: string } | null)?.phone || "";
+  } else {
+    phone = String(run.vars[cfg.phone_key || ""] || "");
+  }
+
+  phone = phone.replace(/[^0-9]/g, "");
+  if (phone.length > 10) phone = phone.slice(-10);
+
+  if (!phone) {
+     return { outcome: "advanced", node_key: cfg.failure_next || "" };
+  }
+
+  try {
+     const data = await fetchBackend(`/wa/breakage/${phone}`);
+     console.log("[fetch_breakage] response data:", data);
+     
+     if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+        const rows = data.data.slice(0, 10).map((s: any) => ({
+           id: s.invoice,
+           title: s.invoice,
+           description: s.date
+        }));
+        
+        const { whatsapp_message_id } = await engineSendInteractiveList({
+          accountId: run.account_id,
+          userId: run.user_id,
+          conversationId: run.conversation_id!,
+          contactId: run.contact_id!,
+          bodyText: cfg.list_text || "Select a breakage record:",
+          buttonLabel: cfg.button_label || "View Records",
+          sections: [{ title: "Breakage Records", rows }]
+        });
+        
+        await logEvent(db, run.id, "message_sent", node.node_key, {
+          node_type: "fetch_breakage",
+          whatsapp_message_id,
+        });
+        
+        const { data: msg } = await db
+          .from("messages")
+          .select("id")
+          .eq("message_id", whatsapp_message_id)
+          .maybeSingle();
+          
+        await db
+          .from("flow_runs")
+          .update({
+            last_prompt_message_id: (msg as { id: string } | null)?.id ?? null,
+          })
+          .eq("id", run.id);
+          
+        return { outcome: "advanced", node_key: node.node_key }; 
+     } else {
+        return { outcome: "advanced", node_key: cfg.failure_next || "" };
+     }
+  } catch (err) {
+     await logEvent(db, run.id, "error", node.node_key, {
+       reason: "fetch_breakage_failed",
+       detail: err instanceof Error ? err.message : String(err),
+     });
+     return { outcome: "advanced", node_key: cfg.failure_next || "" };
   }
 }
 
@@ -1280,6 +1363,28 @@ async function advanceFromNodeKey(
       await endRun(db, run.id, "completed", "end_node");
       return { outcome: "completed" };
     }
+
+    if (node.node_type === "fetch_breakage") {
+      const res = await fetchBreakageAndSuspend(db, run, node);
+      if (res.node_key === node.node_key) {
+        const advanced = await advanceCurrentNodeKey(
+          db,
+          run.id,
+          run.current_node_key,
+          node.node_key,
+        );
+        if (!advanced) {
+          await logEvent(db, run.id, "error", node.node_key, {
+            reason: "lost_race_during_advance",
+          });
+        }
+        return { outcome: "advanced" };
+      } else {
+        currentKey = res.node_key;
+        continue;
+      }
+    }
+
     if (node.node_type === "continue_flow") {
       const cfg = node.config as unknown as ContinueFlowNodeConfig;
       
@@ -1499,7 +1604,8 @@ async function handleReplyForActiveRun(
     (currentNode.node_type === "send_buttons" ||
       currentNode.node_type === "send_list" ||
       currentNode.node_type === "fetch_orders" ||
-      currentNode.node_type === "fetch_all_sr")
+      currentNode.node_type === "fetch_all_sr" ||
+      currentNode.node_type === "fetch_breakage")
   ) {
     if (currentNode.node_type === "fetch_orders") {
       const cfg = currentNode.config as unknown as FetchOrdersNodeConfig;
@@ -1522,10 +1628,12 @@ async function handleReplyForActiveRun(
       } else {
         matched = null;
       }
-    } else if (currentNode.node_type === "fetch_all_sr") {
+    } else if (currentNode.node_type === "fetch_all_sr" ||
+      currentNode.node_type === "fetch_breakage") {
       const cfg = currentNode.config as unknown as FetchAllSrNodeConfig;
-      matched = cfg.success_next;
-      const newVars = { ...run.vars, [cfg.var_key]: message.reply_id };
+      matched = cfg.success_next || null;
+      const newVars = { ...run.vars };
+      if (cfg.var_key) newVars[cfg.var_key] = message.reply_id;
       const { error: capErr } = await db
         .from("flow_runs")
         .update({
@@ -1627,7 +1735,8 @@ async function handleReplyForActiveRun(
       await sendListAndSuspend(db, run, currentNode, interpolationVars);
     } else if (currentNode.node_type === "fetch_orders") {
       await fetchOrdersAndSuspend(db, run, currentNode);
-    } else if (currentNode.node_type === "fetch_all_sr") {
+    } else if (currentNode.node_type === "fetch_all_sr" ||
+      currentNode.node_type === "fetch_breakage") {
       await fetchAllSrAndSuspend(db, run, currentNode);
     } else if (currentNode.node_type === "collect_input") {
       // Customer typed something we couldn't accept (empty after trim,

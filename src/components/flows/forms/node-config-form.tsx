@@ -37,6 +37,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -380,54 +381,10 @@ export function NodeConfigForm({
       );
 
     case "fetch_all_sr":
-      return (
-        <>
-          <TextRow
-            label="Phone variable key (e.g. contact.phone)"
-            value={(cfg as { phone_key?: string }).phone_key ?? ""}
-            onChange={(v) => onUpdateConfig({ phone_key: v })}
-          />
-          <TextRow
-            label="List message text"
-            value={(cfg as { list_text?: string }).list_text ?? "Select a sales return:"}
-            onChange={(v) => onUpdateConfig({ list_text: v })}
-          />
-          <TextRow
-            label="Button label"
-            value={(cfg as { button_label?: string }).button_label ?? "View Returns"}
-            onChange={(v) => onUpdateConfig({ button_label: v })}
-          />
-          <div>
-            <label className="mb-1 block text-xs text-muted-foreground">
-              Variable key (to store selected SR)
-            </label>
-            <Input
-              value={(cfg as { var_key?: string }).var_key ?? ""}
-              onChange={(e) =>
-                onUpdateConfig({
-                  var_key: e.target.value.replace(/[^a-zA-Z0-9_]/g, ""),
-                })
-              }
-              placeholder="e.g. selected_sr"
-              className="bg-muted font-mono text-xs"
-            />
-          </div>
-          <NextNodeRow
-            value={(cfg as { success_next?: string }).success_next ?? ""}
-            allNodes={allNodes}
-            currentKey={node.node_key}
-            onChange={(v) => onUpdateConfig({ success_next: v })}
-            label="On SR Selected (Success)"
-          />
-          <NextNodeRow
-            value={(cfg as { failure_next?: string }).failure_next ?? ""}
-            allNodes={allNodes}
-            currentKey={node.node_key}
-            onChange={(v) => onUpdateConfig({ failure_next: v })}
-            label="If no SRs / API error (Failure)"
-          />
-        </>
-      );
+      return <FetchAllSrConfigForm node={node} onChange={onUpdateConfig} allNodes={allNodes} />;
+
+    case "fetch_breakage":
+      return <FetchBreakageConfigForm node={node} onChange={onUpdateConfig} allNodes={allNodes} />;
 
     case "continue_flow":
       return (
@@ -1454,6 +1411,154 @@ function ApiCallForm({
         currentKey={currentKey}
         onChange={(v) => onUpdateConfig({ failure_next: v })}
         label="If failure (non-2xx)"
+      />
+    </div>
+  );
+}
+
+interface ConfigProps {
+  node: BuilderNode;
+  onChange: (patch: Record<string, unknown>) => void;
+  allNodes: BuilderNode[];
+}
+
+function FetchAllSrConfigForm({ node, onChange, allNodes }: ConfigProps) {
+  const c = node.config as Record<string, unknown>;
+  const phoneKey = typeof c.phone_key === "string" ? c.phone_key : "";
+  const varKey = typeof c.var_key === "string" ? c.var_key : "";
+  const listText = typeof c.list_text === "string" ? c.list_text : "";
+  const buttonLabel = typeof c.button_label === "string" ? c.button_label : "";
+  const successNext = typeof c.success_next === "string" ? c.success_next : "";
+  const failureNext = typeof c.failure_next === "string" ? c.failure_next : "";
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <Label>Phone Number Key</Label>
+        <Input
+          value={phoneKey}
+          onChange={(e) => onChange({ phone_key: e.target.value })}
+          placeholder="e.g. contact.phone or vars.phone"
+        />
+        <p className="text-xs text-muted-foreground">
+          The variable or contact field containing the phone number.
+        </p>
+      </div>
+
+      <div className="space-y-2">
+        <Label>List Message Text</Label>
+        <Input
+          value={listText}
+          onChange={(e) => onChange({ list_text: e.target.value })}
+          placeholder="e.g. Select a sales return:"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label>Button Label</Label>
+        <Input
+          value={buttonLabel}
+          onChange={(e) => onChange({ button_label: e.target.value })}
+          placeholder="e.g. View Returns"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label>Variable to Store Selection</Label>
+        <Input
+          value={varKey}
+          onChange={(e) => onChange({ var_key: e.target.value })}
+          placeholder="e.g. selected_sr"
+        />
+        <p className="text-xs text-muted-foreground">
+          The selected SR ID will be saved as <code>vars.{varKey || "key"}</code>.
+        </p>
+      </div>
+
+      <NextNodeRow
+        value={successNext}
+        allNodes={allNodes}
+        currentKey={node.node_key}
+        onChange={(v) => onChange({ success_next: v })}
+        label="On SR Selected (Success)"
+      />
+      <NextNodeRow
+        value={failureNext}
+        allNodes={allNodes}
+        currentKey={node.node_key}
+        onChange={(v) => onChange({ failure_next: v })}
+        label="If no SRs / API error (Failure)"
+      />
+    </div>
+  );
+}
+
+function FetchBreakageConfigForm({ node, onChange, allNodes }: ConfigProps) {
+  const c = node.config as Record<string, unknown>;
+  const phoneKey = typeof c.phone_key === "string" ? c.phone_key : "";
+  const varKey = typeof c.var_key === "string" ? c.var_key : "";
+  const listText = typeof c.list_text === "string" ? c.list_text : "";
+  const buttonLabel = typeof c.button_label === "string" ? c.button_label : "";
+  const successNext = typeof c.success_next === "string" ? c.success_next : "";
+  const failureNext = typeof c.failure_next === "string" ? c.failure_next : "";
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <Label>Phone Number Key</Label>
+        <Input
+          value={phoneKey}
+          onChange={(e) => onChange({ phone_key: e.target.value })}
+          placeholder="e.g. contact.phone or vars.phone"
+        />
+        <p className="text-xs text-muted-foreground">
+          The variable or contact field containing the phone number.
+        </p>
+      </div>
+
+      <div className="space-y-2">
+        <Label>List Message Text</Label>
+        <Input
+          value={listText}
+          onChange={(e) => onChange({ list_text: e.target.value })}
+          placeholder="e.g. Select a breakage record:"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label>Button Label</Label>
+        <Input
+          value={buttonLabel}
+          onChange={(e) => onChange({ button_label: e.target.value })}
+          placeholder="e.g. View Records"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label>Variable to Store Selection</Label>
+        <Input
+          value={varKey}
+          onChange={(e) => onChange({ var_key: e.target.value })}
+          placeholder="e.g. selected_breakage"
+        />
+        <p className="text-xs text-muted-foreground">
+          The selected Invoice ID will be saved as <code>vars.{varKey || "key"}</code>.
+        </p>
+      </div>
+
+      <NextNodeRow
+        value={successNext}
+        allNodes={allNodes}
+        currentKey={node.node_key}
+        onChange={(v) => onChange({ success_next: v })}
+        label="On Breakage Selected (Success)"
+      />
+      <NextNodeRow
+        value={failureNext}
+        allNodes={allNodes}
+        currentKey={node.node_key}
+        onChange={(v) => onChange({ failure_next: v })}
+        label="If no records / API error (Failure)"
       />
     </div>
   );

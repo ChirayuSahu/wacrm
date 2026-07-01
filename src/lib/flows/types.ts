@@ -220,14 +220,22 @@ export interface FetchSrNodeConfig {
 }
 
 export interface FetchAllSrNodeConfig {
-  phone_key: string; // The variable or contact field containing the phone number
-  list_text: string;
-  button_label: string;
-  var_key: string;
-  success_next: string;
-  failure_next: string;
+  phone_key?: string;
+  var_key?: string;
+  list_text?: string;
+  button_label?: string;
+  success_next?: string;
+  failure_next?: string;
 }
 
+export interface FetchBreakageNodeConfig {
+  phone_key?: string;
+  var_key?: string;
+  list_text?: string;
+  button_label?: string;
+  success_next?: string;
+  failure_next?: string;
+}
 
 export interface SendPaymentRequestNodeConfig {
   /** The VPA to receive the money (e.g. chirayusahu@upi) */
@@ -270,6 +278,7 @@ export type FlowNodeConfig =
   | { node_type: "fetch_orders"; config: FetchOrdersNodeConfig }
   | { node_type: "fetch_sr"; config: FetchSrNodeConfig }
   | { node_type: "fetch_all_sr"; config: FetchAllSrNodeConfig }
+  | { node_type: "fetch_breakage"; config: FetchBreakageNodeConfig }
   | { node_type: "end"; config: EndNodeConfig }
   | { node_type: "continue_flow"; config: ContinueFlowNodeConfig }
   | { node_type: "send_payment_request"; config: SendPaymentRequestNodeConfig };

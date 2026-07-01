@@ -224,6 +224,7 @@ export function outgoingSlots(node: BuilderNode): OutgoingSlot[] {
     case "fetch_orders":
     case "fetch_sr":
     case "fetch_all_sr":
+    case "fetch_breakage":
       return [
         { id: "success", label: "success" },
         { id: "failure", label: "failure" },
@@ -311,6 +312,7 @@ export function applyEdgeConnection(
     case "fetch_orders":
     case "fetch_sr":
     case "fetch_all_sr":
+    case "fetch_breakage":
       if (sourceHandle === "success") return { success_next: targetKey };
       if (sourceHandle === "failure") return { failure_next: targetKey };
       return null;
@@ -425,7 +427,8 @@ function patchedConfigWithoutKey(
     case "api_call":
     case "fetch_orders":
     case "fetch_sr":
-    case "fetch_all_sr": {
+    case "fetch_all_sr":
+    case "fetch_breakage": {
       const c = cfg as { success_next?: string; failure_next?: string };
       const sMatch = c.success_next === deletedKey;
       const fMatch = c.failure_next === deletedKey;

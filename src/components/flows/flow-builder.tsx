@@ -644,6 +644,7 @@ function AddNodeButton({ onAdd }: { onAdd: (type: NodeType) => void }) {
     "fetch_orders",
     "fetch_sr",
     "fetch_all_sr",
+    "fetch_breakage",
     "api_call",
     "send_payment_request",
     "handoff",

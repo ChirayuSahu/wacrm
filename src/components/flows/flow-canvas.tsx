@@ -660,6 +660,7 @@ const ADD_NODE_TYPES: NodeType[] = [
   "fetch_orders",
   "fetch_sr",
   "fetch_all_sr",
+  "fetch_breakage",
   "api_call",
   "handoff",
   "end",

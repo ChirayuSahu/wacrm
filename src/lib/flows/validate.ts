@@ -1108,7 +1108,8 @@ function outgoingEdges(node: NodeInput): string[] {
     }
     case "fetch_orders":
     case "fetch_sr":
-    case "fetch_all_sr": {
+    case "fetch_all_sr":
+    case "fetch_breakage": {
       const cfg = node.config as {
         success_next?: string;
         failure_next?: string;

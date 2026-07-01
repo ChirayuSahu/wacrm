@@ -59,6 +59,7 @@ export type NodeType =
   | "fetch_orders"
   | "fetch_sr"
   | "fetch_all_sr"
+  | "fetch_breakage"
   | "end"
   | "continue_flow"
   | "send_payment_request";
@@ -155,6 +156,12 @@ export const NODE_META: Record<
     label: "Fetch All SRs",
     description: "Fetch all sales returns and present to user",
     color: "bg-fuchsia-50 text-fuchsia-600 border-fuchsia-200",
+  },
+  fetch_breakage: {
+    icon: ShoppingBag,
+    label: "Fetch Breakage",
+    description: "Fetch breakage records and present to user",
+    color: "bg-orange-50 text-orange-600 border-orange-200",
   },
   continue_flow: {
     label: "Continue Flow",
@@ -337,6 +344,10 @@ export function summarizeNode(node: BuilderNode): string | null {
     case "fetch_all_sr": {
       const c = cfg as Record<string, any>;
       return `Fetch all SRs for phone: ${c.phone_key || "(empty)"}`;
+    }
+    case "fetch_breakage": {
+      const c = cfg as Record<string, any>;
+      return `Fetch breakage for phone: ${c.phone_key || "(empty)"}`;
     }
     case "continue_flow": {
       const target = typeof cfg.target_flow_id === "string" ? cfg.target_flow_id : "";
