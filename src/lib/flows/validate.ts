@@ -933,6 +933,54 @@ function validateNode(
       break;
     }
 
+    case "fetch_breakage": {
+      const cfg = (node.config || {}) as {
+        phone_key?: string;
+        var_key?: string;
+        success_next?: string;
+        failure_next?: string;
+      };
+      if (!cfg.phone_key?.trim()) {
+        issues.push({
+          severity: "error",
+          scope: "node",
+          node_key: node.node_key,
+          field: "phone_key",
+          message: "Fetch-Breakage needs a phone_key to query records for.",
+        });
+      }
+      if (!cfg.var_key?.trim()) {
+        issues.push({
+          severity: "error",
+          scope: "node",
+          node_key: node.node_key,
+          field: "var_key",
+          message: "Fetch-Breakage needs a var_key to store the selected record.",
+        });
+      }
+      for (const branch of ["success_next", "failure_next"] as const) {
+        const key = cfg[branch];
+        if (!key) {
+          issues.push({
+            severity: "error",
+            scope: "node",
+            node_key: node.node_key,
+            field: branch,
+            message: `Fetch-Breakage needs a node for the "${branch === "success_next" ? "success" : "failure"}" branch.`,
+          });
+        } else if (!knownKeys.has(key)) {
+          issues.push({
+            severity: "error",
+            scope: "node",
+            node_key: node.node_key,
+            field: branch,
+            message: `Fetch-Breakage's "${branch}" points to non-existent node "${key}".`,
+          });
+        }
+      }
+      break;
+    }
+
     case "api_call": {
       const cfg = node.config as {
         url?: string;
