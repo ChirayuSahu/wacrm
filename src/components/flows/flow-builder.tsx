@@ -133,23 +133,6 @@ export function FlowBuilder() {
     [updateNode],
   );
 
-  const updateNodeWrapped = useCallback(
-    (key: string, patch: Partial<BuilderNode>) => {
-      if (patch.node_key && patch.node_key !== key) {
-        setExpanded((prev) => {
-          const next = new Set(prev);
-          if (next.has(key)) {
-            next.delete(key);
-            next.add(patch.node_key!);
-          }
-          return next;
-        });
-      }
-      updateNode(key, patch);
-    },
-    [updateNode],
-  );
-
   const toggleExpanded = useCallback((key: string) => {
     setExpanded((prev) => {
       const next = new Set(prev);
@@ -165,32 +148,6 @@ export function FlowBuilder() {
       else nodeRefs.current.delete(key);
     },
     [],
-  );
-
-  const moveNodeUp = useCallback(
-    (index: number) => {
-      setState((s) => {
-        const next = [...s.nodes];
-        const temp = next[index];
-        next[index] = next[index - 1];
-        next[index - 1] = temp;
-        return { ...s, nodes: next };
-      });
-    },
-    [setState],
-  );
-
-  const moveNodeDown = useCallback(
-    (index: number) => {
-      setState((s) => {
-        const next = [...s.nodes];
-        const temp = next[index];
-        next[index] = next[index + 1];
-        next[index + 1] = temp;
-        return { ...s, nodes: next };
-      });
-    },
-    [setState],
   );
 
   const moveNodeUp = useCallback(

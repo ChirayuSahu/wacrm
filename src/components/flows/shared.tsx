@@ -17,23 +17,26 @@
  */
 
 import {
-  Flag,
-  GitFork,
-  Inbox,
+  MessageCircle,
   ListChecks,
   ListPlus,
-  MessageCircle,
-  Paperclip,
-  PlayCircle,
-  Receipt,
-  Tag,
-  UserPlus,
-  Webhook,
-  Workflow,
-  FastForward,
   ExternalLink,
+  Paperclip,
+  Inbox,
+  GitBranch,
+  UserPlus,
+  Flag,
+  Tag,
+  Receipt,
+  Webhook,
   ShoppingBag,
-} from "lucide-react";
+  FastForward,
+  PlayCircle,
+  LucideProps,
+  GitFork,
+  Workflow,
+} from 'lucide-react';
+import { cn } from "@/lib/utils";
 
 // ============================================================
 // Node-type union — single source of truth for every place the UI
@@ -140,11 +143,8 @@ export const NODE_META: Record<
     label: "URL Button",
     icon: ExternalLink,
     color: "text-blue-400",
-  },
-  send_cta: {
-    label: "URL Button",
-    icon: ExternalLink,
-    color: "text-blue-400",
+    blurb: 'Sends a URL button message',
+    category: 'messaging',
   },
   send_media: {
     label: 'Send media',
@@ -185,48 +185,70 @@ export const NODE_META: Record<
     label: "Fetch invoice",
     icon: Receipt,
     color: "text-blue-500",
+    blurb: 'Fetches an invoice',
+    category: 'flow',
   },
   api_call: {
     label: "API Call",
     icon: Webhook,
     color: "text-orange-500",
+    blurb: 'Makes an external API request',
+    category: 'logic',
   },
   fetch_orders: {
     icon: ShoppingBag,
     label: "Fetch Orders",
     description: "Fetch recent orders from backend and present to user",
+    blurb: 'Fetches recent orders',
+    category: 'flow',
     color: "bg-blue-50 text-blue-600 border-blue-200",
   },
   fetch_sr: {
     icon: Receipt,
     label: "Fetch SR",
     description: "Fetch sales return details from backend",
+    blurb: 'Fetches sales return details',
+    category: 'flow',
     color: "bg-fuchsia-50 text-fuchsia-600 border-fuchsia-200",
   },
   fetch_all_sr: {
     icon: ShoppingBag,
     label: "Fetch All SRs",
     description: "Fetch all sales returns and present to user",
+    blurb: 'Fetches all sales returns',
+    category: 'flow',
     color: "bg-fuchsia-50 text-fuchsia-600 border-fuchsia-200",
   },
   fetch_breakage: {
     icon: ShoppingBag,
     label: "Fetch Breakage",
     description: "Fetch breakage records and present to user",
+    blurb: 'Fetches breakage records',
+    category: 'flow',
     color: "bg-orange-50 text-orange-600 border-orange-200",
   },
   continue_flow: {
     label: "Continue Flow",
     icon: FastForward,
     color: "text-green-500",
+    blurb: 'Jumps to another flow',
+    category: 'flow',
   },
   send_payment_request: {
     label: "Request Payment",
     icon: Receipt,
     color: "text-emerald-500",
-    description: "Send a UPI intent payment request card"
+    description: "Send a UPI intent payment request card",
+    blurb: 'Sends a UPI payment request',
+    category: 'messaging',
   },
-  end: { label: "End", icon: Flag, color: "text-muted-foreground" },
+  end: { 
+    label: "End", 
+    icon: Flag, 
+    color: "text-muted-foreground",
+    blurb: 'Ends the flow',
+    category: 'flow',
+  },
 };
 
 /**
@@ -267,6 +289,15 @@ const NODE_HUE: Record<NodeType, { l: number; c: number; h: number }> = {
   condition: { l: 0.72, c: 0.15, h: 65 }, // amber — a fork in the road
   set_tag: { l: 0.65, c: 0.15, h: 350 }, // pink
   handoff: { l: 0.65, c: 0.17, h: 16 }, // rose — hands off
+  send_cta: { l: 0.62, c: 0.16, h: 254 },
+  fetch_invoice: { l: 0.65, c: 0.12, h: 210 },
+  api_call: { l: 0.72, c: 0.15, h: 65 },
+  fetch_orders: { l: 0.62, c: 0.13, h: 162 },
+  fetch_sr: { l: 0.6, c: 0.18, h: 293 },
+  fetch_all_sr: { l: 0.6, c: 0.18, h: 293 },
+  fetch_breakage: { l: 0.65, c: 0.17, h: 16 },
+  continue_flow: { l: 0.62, c: 0.13, h: 162 },
+  send_payment_request: { l: 0.62, c: 0.13, h: 162 },
   end: { l: 0.55, c: 0.01, h: 260 }, // neutral grey — terminal
 };
 
